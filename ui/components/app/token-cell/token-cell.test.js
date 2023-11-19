@@ -25,12 +25,16 @@ jest.mock('../../../hooks/useTokenFiatAmount', () => {
 describe('Token Cell', () => {
   const mockState = {
     metamask: {
-      currentCurrency: 'usd',
       selectedAddress: '0xAddress',
       contractExchangeRates: {
         '0xAnotherToken': 0.015,
       },
-      conversionRate: 7.0,
+      currentCurrency: 'usd',
+      currencyRates: {
+        ETH: {
+          conversionRate: 7.0,
+        },
+      },
       preferences: {},
       providerConfig: {
         chainId: '0x1',
@@ -56,7 +60,7 @@ describe('Token Cell', () => {
       erc20: true,
       symbol: 'TEST',
       decimals: 18,
-      address: '0xAnotherToken',
+      address: '0xANoTherToKen',
       iconUrl: './images/test_image.svg',
       aggregators: [],
     },

@@ -6,9 +6,6 @@ const { merge } = require('lodash');
 const { toHex } = require('@metamask/controller-utils');
 const { NetworkStatus } = require('@metamask/network-controller');
 const { CHAIN_IDS, NETWORK_TYPES } = require('../../shared/constants/network');
-const {
-  ACTION_QUEUE_METRICS_E2E_TEST,
-} = require('../../shared/constants/test-flags');
 const { SMART_CONTRACTS } = require('./seeder/smart-contracts');
 const { DAPP_URL, DAPP_ONE_URL } = require('./helpers');
 
@@ -186,11 +183,14 @@ function defaultFixture() {
         },
       },
       CurrencyController: {
-        conversionDate: 1665507600.0,
-        conversionRate: 1300.0,
         currentCurrency: 'usd',
-        nativeCurrency: 'ETH',
-        usdConversionRate: 1300.0,
+        currencyRates: {
+          ETH: {
+            conversionDate: 1665507600.0,
+            conversionRate: 1300.0,
+            usdConversionRate: 1300.0,
+          },
+        },
       },
       GasFeeController: {
         estimatedGasFeeTimeBounds: {},
@@ -278,6 +278,7 @@ function defaultFixture() {
         useTokenDetection: false,
         useCurrencyRateCheck: true,
         useMultiAccountBalanceChecker: true,
+        useRequestQueue: false,
       },
       SmartTransactionsController: {
         smartTransactionsState: {
@@ -342,7 +343,6 @@ function onboardingFixture() {
           [CHAIN_IDS.GOERLI]: true,
           [CHAIN_IDS.LOCALHOST]: true,
         },
-        [ACTION_QUEUE_METRICS_E2E_TEST]: false,
       },
       NetworkController: {
         selectedNetworkClientId: 'networkConfigurationId',
@@ -398,6 +398,7 @@ function onboardingFixture() {
         useTokenDetection: false,
         useCurrencyRateCheck: true,
         useMultiAccountBalanceChecker: true,
+        useRequestQueue: false,
       },
       SmartTransactionsController: {
         smartTransactionsState: {
@@ -776,6 +777,13 @@ class FixtureBuilder {
         },
       },
       selectedAddress: '0x0cc5261ab8ce458dc977078a3623e2badd27afd3',
+    });
+  }
+
+  withPreferencesControllerNftDetectionEnabled() {
+    return this.withPreferencesController({
+      openSeaEnabled: true,
+      useNftDetection: true,
     });
   }
 
