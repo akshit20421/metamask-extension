@@ -8,6 +8,7 @@ const {
   logInWithBalanceValidation,
   openActionMenuAndStartSendFlow,
   unlockWallet,
+  WINDOW_TITLES,
 } = require('../helpers');
 const FixtureBuilder = require('../fixture-builder');
 
@@ -29,7 +30,6 @@ describe('Send ETH from inside MetaMask using default gas', function () {
         title: this.test.fullTitle(),
       },
       async ({ driver, ganacheServer }) => {
-        await driver.navigate();
         await logInWithBalanceValidation(driver, ganacheServer);
 
         await openActionMenuAndStartSendFlow(driver);
@@ -119,7 +119,6 @@ describe('Send ETH non-contract address with data that matches ERC20 transfer da
         title: this.test.fullTitle(),
       },
       async ({ driver, ganacheServer }) => {
-        await driver.navigate();
         await logInWithBalanceValidation(driver, ganacheServer);
 
         await openActionMenuAndStartSendFlow(driver);
@@ -173,7 +172,6 @@ describe('Send ETH from inside MetaMask using advanced gas modal', function () {
         title: this.test.fullTitle(),
       },
       async ({ driver }) => {
-        await driver.navigate();
         await unlockWallet(driver);
 
         await driver.delay(1000);
@@ -243,7 +241,6 @@ describe('Send ETH from dapp using advanced gas controls', function () {
         title: this.test.fullTitle(),
       },
       async ({ driver }) => {
-        await driver.navigate();
         await unlockWallet(driver);
 
         // initiates a send from the dapp
@@ -253,7 +250,7 @@ describe('Send ETH from dapp using advanced gas controls', function () {
         const windowHandles = await driver.getAllWindowHandles();
         const extension = windowHandles[0];
         await driver.switchToWindowWithTitle(
-          'MetaMask Notification',
+          WINDOW_TITLES.Dialog,
           windowHandles,
         );
         await driver.assertElementNotPresent({ text: 'Data', tag: 'li' });
@@ -319,7 +316,6 @@ describe('Send ETH from dapp using advanced gas controls', function () {
         title: this.test.fullTitle(),
       },
       async ({ driver }) => {
-        await driver.navigate();
         await unlockWallet(driver);
 
         // initiates a transaction from the dapp
@@ -329,7 +325,7 @@ describe('Send ETH from dapp using advanced gas controls', function () {
 
         const extension = windowHandles[0];
         await driver.switchToWindowWithTitle(
-          'MetaMask Notification',
+          WINDOW_TITLES.Dialog,
           windowHandles,
         );
         await driver.assertElementNotPresent({ text: 'Data', tag: 'li' });
@@ -412,7 +408,6 @@ describe('Send ETH from inside MetaMask to a Multisig Address', function () {
         const contractAddress = await contractRegistry.getContractAddress(
           smartContract,
         );
-        await driver.navigate();
         await logInWithBalanceValidation(driver, ganacheServer);
 
         await openActionMenuAndStartSendFlow(driver);
