@@ -6,6 +6,8 @@ import { MOCKS, createSwapsMockStore } from '../../../test/jest';
 import { setSwapsLiveness, setSwapsFeatureFlags } from '../../store/actions';
 import { CHAIN_IDS } from '../../../shared/constants/network';
 import { setStorageItem } from '../../../shared/lib/storage-helpers';
+import { createMockInternalAccount } from '../../../test/jest/mocks';
+import { mockNetworkState } from '../../../test/stub/networks';
 import swapsReducer, * as swaps from './swaps';
 
 const middleware = [thunk];
@@ -19,15 +21,6 @@ jest.mock('../../store/actions.ts', () => ({
   }),
 }));
 
-const providerConfigState = {
-  chainId: '0x1',
-  nickname: '',
-  rpcPrefs: {},
-  rpcUrl: '',
-  ticker: 'ETH',
-  type: 'mainnet',
-};
-
 describe('Ducks - Swaps', () => {
   afterEach(() => {
     nock.cleanAll();
@@ -36,7 +29,7 @@ describe('Ducks - Swaps', () => {
   describe('fetchSwapsLivenessAndFeatureFlags', () => {
     const cleanFeatureFlagApiCache = () => {
       setStorageItem(
-        'cachedFetch:https://swap.metaswap.codefi.network/featureFlags',
+        'cachedFetch:https://swap.api.cx.metamask.io/featureFlags',
         null,
       );
     };
@@ -49,7 +42,7 @@ describe('Ducks - Swaps', () => {
       featureFlagsResponse,
       replyWithError = false,
     } = {}) => {
-      const apiNock = nock('https://swap.metaswap.codefi.network').get(
+      const apiNock = nock('https://swap.api.cx.metamask.io').get(
         '/featureFlags',
       );
       if (replyWithError) {
@@ -62,10 +55,18 @@ describe('Ducks - Swaps', () => {
     };
 
     const createGetState = () => {
+      const mockInternalAccount = createMockInternalAccount();
+
       return () => ({
         metamask: {
-          providerConfig: { ...providerConfigState },
+          ...mockNetworkState({ chainId: CHAIN_IDS.MAINNET }),
           from: '0x64a845a5b02460acf8a3d84503b0d68d028b4bb4',
+          internalAccounts: {
+            accounts: {
+              [mockInternalAccount.id]: mockInternalAccount,
+            },
+            selectedAccount: mockInternalAccount.id,
+          },
         },
       });
     };
@@ -401,57 +402,6 @@ describe('Ducks - Swaps', () => {
     });
   });
 
-  describe('getSmartTransactionsEnabled', () => {
-    it('returns true if feature flag is enabled, not a HW and is Ethereum network', () => {
-      const state = createSwapsMockStore();
-      expect(swaps.getSmartTransactionsEnabled(state)).toBe(true);
-    });
-
-    it('returns false if feature flag is disabled, not a HW and is Ethereum network', () => {
-      const state = createSwapsMockStore();
-      state.metamask.swapsState.swapsFeatureFlags.smartTransactions.extensionActive = false;
-      expect(swaps.getSmartTransactionsEnabled(state)).toBe(false);
-    });
-
-    it('returns false if feature flag is enabled, not a HW, STX liveness is false and is Ethereum network', () => {
-      const state = createSwapsMockStore();
-      state.metamask.smartTransactionsState.liveness = false;
-      expect(swaps.getSmartTransactionsEnabled(state)).toBe(false);
-    });
-
-    it('returns false if feature flag is enabled, is a HW and is Ethereum network', () => {
-      const state = createSwapsMockStore();
-      state.metamask.internalAccounts.accounts[
-        state.metamask.internalAccounts.selectedAccount
-      ].metadata.keyring.type = 'Trezor Hardware';
-      expect(swaps.getSmartTransactionsEnabled(state)).toBe(false);
-    });
-
-    it('returns false if feature flag is enabled, not a HW and is Polygon network', () => {
-      const state = createSwapsMockStore();
-      state.metamask.providerConfig.chainId = CHAIN_IDS.POLYGON;
-      expect(swaps.getSmartTransactionsEnabled(state)).toBe(false);
-    });
-
-    it('returns false if feature flag is enabled, not a HW and is BSC network', () => {
-      const state = createSwapsMockStore();
-      state.metamask.providerConfig.chainId = CHAIN_IDS.BSC;
-      expect(swaps.getSmartTransactionsEnabled(state)).toBe(false);
-    });
-
-    it('returns true if feature flag is enabled, not a HW and is Goerli network', () => {
-      const state = createSwapsMockStore();
-      state.metamask.providerConfig.chainId = CHAIN_IDS.GOERLI;
-      expect(swaps.getSmartTransactionsEnabled(state)).toBe(true);
-    });
-
-    it('returns false if feature flag is missing', () => {
-      const state = createSwapsMockStore();
-      state.metamask.swapsState.swapsFeatureFlags = {};
-      expect(swaps.getSmartTransactionsEnabled(state)).toBe(false);
-    });
-  });
-
   describe('getCurrentSmartTransactionsEnabled', () => {
     it('returns true if STX are enabled and there is no current STX error', () => {
       const state = createSwapsMockStore();
@@ -677,13 +627,6 @@ describe('Ducks - Swaps', () => {
         ...state.metamask.swapsState.quotes.TEST_AGG_2.approvalNeeded,
         gasPrice: 5,
       });
-    });
-  });
-
-  describe('getSmartTransactionsOptInStatus', () => {
-    it('returns STX opt in status', () => {
-      const state = createSwapsMockStore();
-      expect(swaps.getSmartTransactionsOptInStatus(state)).toBe(true);
     });
   });
 

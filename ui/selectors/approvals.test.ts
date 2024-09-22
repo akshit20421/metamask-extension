@@ -44,16 +44,17 @@ describe('approval selectors', () => {
 
   describe('hasPendingApprovals', () => {
     it('should return true if there is a pending approval request', () => {
-      const result = hasPendingApprovals(mockedState, ApprovalType.WatchAsset);
+      const result = hasPendingApprovals(mockedState, [
+        ApprovalType.WatchAsset,
+      ]);
 
       expect(result).toBe(true);
     });
 
     it('should return false if there is no pending approval request', () => {
-      const result = hasPendingApprovals(
-        mockedState,
+      const result = hasPendingApprovals(mockedState, [
         ApprovalType.SnapDialogPrompt,
-      );
+      ]);
 
       expect(result).toBe(false);
     });
@@ -68,6 +69,16 @@ describe('approval selectors', () => {
   });
 
   describe('getPendingApprovals', () => {
+    it('should return all pending approvals', () => {
+      const result = getPendingApprovals(mockedState);
+
+      expect(result).toStrictEqual(
+        Object.values(mockedState.metamask.pendingApprovals),
+      );
+    });
+  });
+
+  describe('pendingApprovalsSortedSelector', () => {
     it('should return all pending approvals', () => {
       const result = getPendingApprovals(mockedState);
 

@@ -2,13 +2,16 @@ import React from 'react';
 import { act } from 'react-dom/test-utils';
 import { fireEvent, screen } from '@testing-library/react';
 import { ApprovalType } from '@metamask/controller-utils';
-import { EthAccountType, EthMethod } from '@metamask/keyring-api';
+import { EthAccountType } from '@metamask/keyring-api';
 import {
   resolvePendingApproval,
   rejectPendingApproval,
 } from '../../store/actions';
 import configureStore from '../../store/store';
 import { renderWithProvider } from '../../../test/jest/rendering';
+import { ETH_EOA_METHODS } from '../../../shared/constants/eth-methods';
+import { mockNetworkState } from '../../../test/stub/networks';
+import { CHAIN_IDS } from '../../../shared/constants/network';
 import ConfirmAddSuggestedToken from '.';
 
 const PENDING_APPROVALS = {
@@ -57,12 +60,19 @@ jest.mock('../../store/actions', () => ({
   rejectPendingApproval: jest.fn().mockReturnValue({ type: 'test' }),
 }));
 
+jest.mock('../../hooks/useIsOriginalTokenSymbol', () => {
+  return {
+    useIsOriginalTokenSymbol: jest.fn(),
+  };
+});
+
 const renderComponent = (tokens = []) => {
   const store = configureStore({
     metamask: {
       pendingApprovals: PENDING_APPROVALS,
       tokens,
-      providerConfig: { chainId: '0x1' },
+      ...mockNetworkState({ chainId: CHAIN_IDS.MAINNET }),
+
       internalAccounts: {
         accounts: {
           'cf8dace4-9439-4bd4-b3a8-88c821c8fcb3': {
@@ -75,7 +85,7 @@ const renderComponent = (tokens = []) => {
               },
             },
             options: {},
-            methods: [...Object.values(EthMethod)],
+            methods: ETH_EOA_METHODS,
             type: EthAccountType.Eoa,
           },
         },

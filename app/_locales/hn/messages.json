@@ -33,9 +33,6 @@
   "approve": {
     "message": "मंजूर"
   },
-  "attemptingConnect": {
-    "message": "ब्लॉकचैन से कनेक्ट करने का प्रयास करना होगा।सब्र करे।"
-  },
   "attributions": {
     "message": "एट्रिब्यूशन"
   },
@@ -146,9 +143,6 @@
   "invalidAddressRecipient": {
     "message": "प्राप्तकर्ता का पता अमान्य है"
   },
-  "invalidBlockExplorerURL": {
-    "message": "अमान्य Block Explorer कै URI"
-  },
   "invalidRPC": {
     "message": "अमान्य RPC कै URI"
   },
@@ -206,9 +200,6 @@
   "next": {
     "message": "अगला"
   },
-  "noAddressForName": {
-    "message": "इस नाम के लिए कोई पता सेट नहीं किया गया है।"
-  },
   "noTransactions": {
     "message": "कोई लेन-देन नहीं"
   },
@@ -265,9 +256,6 @@
   },
   "send": {
     "message": "भेजें"
-  },
-  "sendTokens": {
-    "message": "भेजें टोकन"
   },
   "settings": {
     "message": "सेटिंग्स"

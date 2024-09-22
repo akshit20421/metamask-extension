@@ -42,7 +42,7 @@
     "message": "Cartera HW con QR"
   },
   "QRHardwareWalletSteps2Description": {
-    "message": "AirGap Vault y Ngrave (próximamente)"
+    "message": "Ngrave Zero"
   },
   "about": {
     "message": "Acerca de"
@@ -172,15 +172,9 @@
   "alerts": {
     "message": "Alertas"
   },
-  "allowExternalExtensionTo": {
-    "message": "Permitir que esta extensión externa haga lo siguiente:"
-  },
   "allowSpendToken": {
     "message": "¿Dar permiso para acceder a su $1?",
     "description": "$1 is the symbol of the token that are requesting to spend"
-  },
-  "allowThisSiteTo": {
-    "message": "Permitir que este sitio haga lo siguiente:"
   },
   "allowWithdrawAndSpend": {
     "message": "Permitir que se retire $1 y gastar hasta el siguiente importe:",
@@ -219,9 +213,6 @@
   },
   "assetOptions": {
     "message": "Opciones de activos"
-  },
-  "attemptingConnect": {
-    "message": "Intentando una conexión a la cadena de bloques."
   },
   "attributions": {
     "message": "Atribuciones"
@@ -308,9 +299,6 @@
   "cancel": {
     "message": "Cancelar"
   },
-  "cancelEdit": {
-    "message": "Cancelar Editar"
-  },
   "cancelPopoverTitle": {
     "message": "Cancelar transacción"
   },
@@ -376,26 +364,6 @@
   },
   "connectManually": {
     "message": "Conectarse manualmente al sitio actual"
-  },
-  "connectTo": {
-    "message": "Conectarse a $1",
-    "description": "$1 is the name/origin of a web3 site/application that the user can connect to metamask"
-  },
-  "connectToAll": {
-    "message": "Conectarse a todas sus $1",
-    "description": "$1 will be replaced by the translation of connectToAllAccounts"
-  },
-  "connectToAllAccounts": {
-    "message": "cuentas",
-    "description": "will replace $1 in connectToAll, completing the sentence 'connect to all of your accounts', will be text that shows list of accounts on hover"
-  },
-  "connectToMultiple": {
-    "message": "Conectarse a $1",
-    "description": "$1 will be replaced by the translation of connectToMultipleNumberOfAccounts"
-  },
-  "connectToMultipleNumberOfAccounts": {
-    "message": "$1 cuentas",
-    "description": "$1 is the number of accounts to which the web3 site/application is asking to connect; this will substitute $1 in connectToMultiple"
   },
   "connectWithMetaMask": {
     "message": "Conectarse con MetaMask"
@@ -566,9 +534,6 @@
   "delete": {
     "message": "Eliminar"
   },
-  "deleteNetwork": {
-    "message": "¿Eliminar red?"
-  },
   "description": {
     "message": "Descripción"
   },
@@ -736,12 +701,6 @@
   "endpointReturnedDifferentChainId": {
     "message": "El punto de conexión devolvió un id. de cadena diferente: $1",
     "description": "$1 is the return value of eth_chainId from an RPC endpoint"
-  },
-  "ensIllegalCharacter": {
-    "message": "Caracter ilegal para ENS."
-  },
-  "ensRegistrationError": {
-    "message": "Error en el registro del nombre de ENS"
   },
   "ensUnknownError": {
     "message": "Error al buscar ENS."
@@ -1052,12 +1011,6 @@
   "invalidAddressRecipient": {
     "message": "La dirección del destinatario no es válida"
   },
-  "invalidAddressRecipientNotEthNetwork": {
-    "message": "No es una red ETH; configurar en minúsculas"
-  },
-  "invalidBlockExplorerURL": {
-    "message": "Dirección URL del explorador de bloques no válida"
-  },
   "invalidChainIdTooBig": {
     "message": "ID de cadena no válido. El identificador de cadena es demasiado grande."
   },
@@ -1304,9 +1257,6 @@
   "networkNameTestnet": {
     "message": "Red de prueba"
   },
-  "networkSettingsChainIdDescription": {
-    "message": "El ID de la cadena se usa para firmar transacciones. Debe coincidir con el ID de la cadena que devuelve la red. Puede escribir un número decimal o un número hexadecimal con el prefijo “0x”, pero el número se mostrará en decimal."
-  },
   "networkStatus": {
     "message": "Estado de la red"
   },
@@ -1371,9 +1321,6 @@
   "noAccountsFound": {
     "message": "No se encuentran cuentas para la consulta de búsqueda determinada"
   },
-  "noAddressForName": {
-    "message": "No se estableció ninguna dirección para este nombre."
-  },
   "noConversionDateAvailable": {
     "message": "No hay fecha de conversión de moneda disponible"
   },
@@ -1395,9 +1342,6 @@
   "nonceField": {
     "message": "Personalizar nonce de transacción"
   },
-  "nonceFieldDescription": {
-    "message": "Active esta opción para cambiar el nonce (número de transacción) en las pantallas de confirmación. Esta es una función avanzada, úsela con precaución."
-  },
   "nonceFieldHeading": {
     "message": "Nonce personalizado"
   },
@@ -1409,95 +1353,6 @@
   },
   "notEnoughGas": {
     "message": "No hay gas suficiente"
-  },
-  "notifications1Description": {
-    "message": "Los usuarios de la aplicación móvil de MetaMask ahora pueden canjear tokens en su cartera móvil. Escanee el código QR para obtener la aplicación móvil y comience a canjear.",
-    "description": "Description of a notification in the 'See What's New' popup. Describes the swapping on mobile feature."
-  },
-  "notifications1Title": {
-    "message": "¡El canje en dispositivos móviles ya está aquí!",
-    "description": "Title for a notification in the 'See What's New' popup. Tells users that they can now use MetaMask Swaps on Mobile."
-  },
-  "notifications3ActionText": {
-    "message": "Leer más",
-    "description": "The 'call to action' on the button, or link, of the 'Stay secure' notification. Upon clicking, users will be taken to a page about security on the metamask support website."
-  },
-  "notifications3Description": {
-    "message": "Manténgase al día con las mejores prácticas de seguridad de MetaMask y reciba los últimos consejos sobre seguridad del soporte técnico oficial de MetaMask.",
-    "description": "Description of a notification in the 'See What's New' popup. Describes the information they can get on security from the linked support page."
-  },
-  "notifications3Title": {
-    "message": "Mantenerse protegido",
-    "description": "Title for a notification in the 'See What's New' popup. Encourages users to consider security."
-  },
-  "notifications4ActionText": {
-    "message": "Iniciar canje",
-    "description": "The 'call to action' on the button, or link, of the 'Swap on Binance Smart Chain!' notification. Upon clicking, users will be taken to a page where then can swap tokens on Binance Smart Chain."
-  },
-  "notifications4Description": {
-    "message": "Obtenga los mejores precios en los canjes de tokens dentro de su cartera. MetaMask ahora lo conecta con varios agregadores de intercambio descentralizado y creadores de mercado profesionales en Binance Smart Chain.",
-    "description": "Description of a notification in the 'See What's New' popup."
-  },
-  "notifications4Title": {
-    "message": "Canjear en Binance Smart Chain",
-    "description": "Title for a notification in the 'See What's New' popup. Encourages users to do swaps on Binance Smart Chain."
-  },
-  "notifications5Description": {
-    "message": "Su \"frase de recuperación\" ahora se llama \"frase secreta de recuperación.\"",
-    "description": "Description of a notification in the 'See What's New' popup. Describes the seed phrase wording update."
-  },
-  "notifications6DescriptionOne": {
-    "message": "A partir de la versión 91 de Chrome, la API que habilitaba nuestro soporte para Ledger (U2F) ya no es compatible con carteras de hardware. MetaMask ha implementado un nuevo soporte para Ledger Live mediante el cual usted puede seguir conectándose a su dispositivo Ledger a través de la aplicación de escritorio Ledger Live.",
-    "description": "Description of a notification in the 'See What's New' popup. Describes the Ledger support update."
-  },
-  "notifications6DescriptionThree": {
-    "message": "Cuando interactúe con su cuenta de Ledger a través de MetaMask, se abrirá una nueva pestaña y se le pedirá que abra la aplicación Ledger Live.  Una vez que se abra la aplicación, se le pedirá que otorgue permiso para establecer una conexión WebSocket con su cuenta de MetaMask.  ¡Eso es todo!",
-    "description": "Description of a notification in the 'See What's New' popup. Describes the Ledger support update."
-  },
-  "notifications6DescriptionTwo": {
-    "message": "A fin de habilitar el soporte para Live Ledger, haga clic en Configuración > Avanzada > Utilizar Ledger Live.",
-    "description": "Description of a notification in the 'See What's New' popup. Describes the Ledger support update."
-  },
-  "notifications6Title": {
-    "message": "Actualización del soporte para Ledger destinada a usuarios de Chrome",
-    "description": "Title for a notification in the 'See What's New' popup. Lets users know about the Ledger support update"
-  },
-  "notifications7DescriptionOne": {
-    "message": "MetaMask v10.1.0 incluyó nuevo soporte para las transacciones EIP-1559 al utilizar dispositivos Ledger.",
-    "description": "Description of a notification in the 'See What's New' popup. Describes changes for ledger and EIP1559 in v10.1.0"
-  },
-  "notifications7DescriptionTwo": {
-    "message": "Para llevar a cabo transacciones en el Mainnet de Ethereum, asegúrese de que su dispositivo Ledger tenga el último firmware.",
-    "description": "Description of a notification in the 'See What's New' popup. Describes the need to update ledger firmware."
-  },
-  "notifications7Title": {
-    "message": "Actualización de firmware de Ledger",
-    "description": "Title for a notification in the 'See What's New' popup. Notifies ledger users of the need to update firmware."
-  },
-  "notifications8ActionText": {
-    "message": "Ir a Configuración Avanzada",
-    "description": "Description on an action button that appears in the What's New popup. Tells the user that if they click it, they will go to our Advanced settings page."
-  },
-  "notifications8DescriptionOne": {
-    "message": "A partir de MetaMask v10.4.0, ya no necesita Ledger Live para conectar su dispositivo Ledger a MetaMask.",
-    "description": "Description of a notification in the 'See What's New' popup. Describes changes for how Ledger Live is no longer needed to connect the device."
-  },
-  "notifications8DescriptionTwo": {
-    "message": "Para una experiencia más fácil y estable, vaya a la pestaña de Configuración Avanzada y cambie el 'Tipo de Conexión de Ledger Preferida' a 'WebHID'.",
-    "description": "Description of a notification in the 'See What's New' popup. Describes how the user can turn off the Ledger Live setting."
-  },
-  "notifications8Title": {
-    "message": "Mejora de la conexión de Ledger",
-    "description": "Title for a notification in the 'See What's New' popup. Notifies ledger users that there is an improvement in how they can connect their device."
-  },
-  "notifications9DescriptionOne": {
-    "message": "Ahora le ofrecemos más información en la pestaña \"Datos\" al confirmar las transacciones de contratos inteligentes."
-  },
-  "notifications9DescriptionTwo": {
-    "message": "Ahora puede entender mejor los detalles de la transacción antes de confirmarla y añadir más fácilmente las direcciones de las transacciones a su libreta de direcciones, lo que le ayudará a tomar decisiones seguras e informadas."
-  },
-  "notifications9Title": {
-    "message": "👓 Estamos facilitando la lectura de las transacciones."
   },
   "ofTextNofM": {
     "message": "de"
@@ -1556,11 +1411,9 @@
   "onboardingPinExtensionTitle": {
     "message": "¡Su instalación de MetaMask ha finalizado!"
   },
-  "onlyAddTrustedNetworks": {
-    "message": "Un proveedor de red malintencionado puede mentir sobre el estado de la cadena de bloques y registrar su actividad de red. Agregue solo redes personalizadas de confianza."
-  },
   "onlyConnectTrust": {
-    "message": "Conéctese solo con sitios de confianza."
+    "message": "Conéctese solo con sitios de confianza.",
+    "description": "Text displayed above the buttons for connection confirmation. $1 is the link to the learn more web page."
   },
   "openFullScreenForLedgerWebHid": {
     "message": "Abra MetaMask en pantalla completa para conectar su Ledger a través de WebHID.",
@@ -1568,9 +1421,6 @@
   },
   "optional": {
     "message": "Opcional"
-  },
-  "optionalWithParanthesis": {
-    "message": "(Opcional)"
   },
   "or": {
     "message": "o"
@@ -1684,9 +1534,6 @@
   },
   "receive": {
     "message": "Recibir"
-  },
-  "recipientAddressPlaceholder": {
-    "message": "Búsqueda, dirección pública (0x) o ENS"
   },
   "recommendedGasLabel": {
     "message": "Recomendado"
@@ -1818,13 +1665,10 @@
   "seedPhraseIntroRecommendedButtonCopy": {
     "message": "Asegurar mi cartera (recomendado)"
   },
-  "seedPhraseIntroSidebarBulletFour": {
+  "seedPhraseIntroSidebarBulletOne": {
     "message": "Escríbala y guárdela en varios lugares secretos."
   },
-  "seedPhraseIntroSidebarBulletOne": {
-    "message": "Guárdela en un administrador de contraseñas"
-  },
-  "seedPhraseIntroSidebarBulletThree": {
+  "seedPhraseIntroSidebarBulletTwo": {
     "message": "Guárdela en una caja fuerte."
   },
   "seedPhraseIntroSidebarCopyOne": {
@@ -1893,12 +1737,6 @@
   "sendSpecifiedTokens": {
     "message": "Enviar $1",
     "description": "Symbol of the specified token"
-  },
-  "sendTo": {
-    "message": "Enviar a"
-  },
-  "sendTokens": {
-    "message": "Enviar tokens"
   },
   "sendingDisabled": {
     "message": "Todavía no se admite el envío de activos ERC-1155 NFT."
@@ -2573,9 +2411,6 @@
   "urlErrorMsg": {
     "message": "Las direcciones URL requieren el prefijo HTTP/HTTPS adecuado."
   },
-  "urlExistsErrorMsg": {
-    "message": "En este momento, la red $1 está utilizando esta dirección URL."
-  },
   "useNftDetection": {
     "message": "Autodetectar NFT"
   },
@@ -2616,7 +2451,7 @@
   },
   "viewOnCustomBlockExplorer": {
     "message": "Ver $1 en $2",
-    "description": "$1 is the action type. e.g (Account, Transaction, Swap) and $2 is the Custom Block Exporer URL"
+    "description": "$1 is the action type. e.g (Account, Transaction, Swap) and $2 is the Custom Block Explorer URL"
   },
   "viewOnEtherscan": {
     "message": "Ver $1 en Etherscan",
@@ -2690,10 +2525,6 @@
   },
   "whatsThis": {
     "message": "¿Qué es esto?"
-  },
-  "xOfY": {
-    "message": "$1 de $2",
-    "description": "$1 and $2 are intended to be two numbers, where $2 is a total, and $1 is a count towards that total"
   },
   "xOfYPending": {
     "message": "$1 de $2 están pendientes",

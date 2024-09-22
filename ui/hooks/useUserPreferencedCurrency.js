@@ -1,13 +1,15 @@
 import { shallowEqual, useSelector } from 'react-redux';
+import { getPreferences, getSelectedInternalAccount } from '../selectors';
 import {
-  getPreferences,
-  getShouldShowFiat,
-  getCurrentCurrency,
-} from '../selectors';
-import { getNativeCurrency } from '../ducks/metamask/metamask';
+  getMultichainNativeCurrency,
+  getMultichainCurrentCurrency,
+  getMultichainShouldShowFiat,
+} from '../selectors/multichain';
 
 import { PRIMARY, SECONDARY } from '../helpers/constants/common';
 import { EtherDenomination } from '../../shared/constants/common';
+import { ETH_DEFAULT_DECIMALS } from '../constants';
+import { useMultichainSelector } from './useMultichainSelector';
 
 /**
  * Defines the shape of the options parameter for useUserPreferencedCurrency
@@ -40,31 +42,44 @@ import { EtherDenomination } from '../../shared/constants/common';
  * @returns {UserPreferredCurrency}
  */
 export function useUserPreferencedCurrency(type, opts = {}) {
-  const nativeCurrency = useSelector(getNativeCurrency);
+  const selectedAccount = useSelector(getSelectedInternalAccount);
+  const account = opts.account ?? selectedAccount;
+  const nativeCurrency = useMultichainSelector(
+    getMultichainNativeCurrency,
+    account,
+  );
+
   const { useNativeCurrencyAsPrimaryCurrency } = useSelector(
     getPreferences,
     shallowEqual,
   );
-  const showFiat = useSelector(getShouldShowFiat) || opts.showFiatOverride;
-  const currentCurrency = useSelector(getCurrentCurrency);
+  const showFiat = useMultichainSelector(getMultichainShouldShowFiat, account);
+  const currentCurrency = useMultichainSelector(
+    getMultichainCurrentCurrency,
+    account,
+  );
 
-  let currency, numberOfDecimals;
-  if (
+  const fiatReturn = {
+    currency: currentCurrency,
+    numberOfDecimals: opts.numberOfDecimals || opts.fiatNumberOfDecimals || 2,
+  };
+
+  const nativeReturn = {
+    currency: nativeCurrency || EtherDenomination.ETH,
+    numberOfDecimals:
+      opts.numberOfDecimals || opts.ethNumberOfDecimals || ETH_DEFAULT_DECIMALS,
+  };
+
+  if (opts.showNativeOverride) {
+    return nativeReturn;
+  } else if (opts.showFiatOverride) {
+    return fiatReturn;
+  } else if (
     !showFiat ||
     (type === PRIMARY && useNativeCurrencyAsPrimaryCurrency) ||
     (type === SECONDARY && !useNativeCurrencyAsPrimaryCurrency)
   ) {
-    // Display ETH
-    currency = nativeCurrency || EtherDenomination.ETH;
-    numberOfDecimals = opts.numberOfDecimals || opts.ethNumberOfDecimals || 8;
-  } else if (
-    (type === SECONDARY && useNativeCurrencyAsPrimaryCurrency) ||
-    (type === PRIMARY && !useNativeCurrencyAsPrimaryCurrency)
-  ) {
-    // Display Fiat
-    currency = currentCurrency;
-    numberOfDecimals = opts.numberOfDecimals || opts.fiatNumberOfDecimals || 2;
+    return nativeReturn;
   }
-
-  return { currency, numberOfDecimals };
+  return fiatReturn;
 }

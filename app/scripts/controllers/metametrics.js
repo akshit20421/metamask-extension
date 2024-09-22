@@ -92,6 +92,7 @@ const exceptionsToFilter = {
  * @property {boolean} [participateInMetaMetrics] - The user's preference for
  *  participating in the MetaMetrics analytics program. This setting controls
  *  whether or not events are tracked
+ *  @property {boolean} [latestNonAnonymousEventTimestamp] - The timestamp at which last non anonymous event is tracked.
  * @property {{[string]: MetaMetricsEventFragment}} [fragments] - Object keyed
  *  by UUID with stored fragments as values.
  * @property {Array} [eventsBeforeMetricsOptIn] - Array of queued events added before
@@ -154,8 +155,12 @@ export default class MetaMetricsController {
     this.store = new ObservableStore({
       participateInMetaMetrics: null,
       metaMetricsId: null,
+      dataCollectionForMarketing: null,
+      marketingCampaignCookieId: null,
+      latestNonAnonymousEventTimestamp: 0,
       eventsBeforeMetricsOptIn: [],
       traits: {},
+      previousUserTraits: {},
       ...initState,
       fragments: {
         ...initState?.fragments,
@@ -187,7 +192,11 @@ export default class MetaMetricsController {
     // Code below submits any pending segmentApiCalls to Segment if/when the controller is re-instantiated
     if (isManifestV3) {
       Object.values(segmentApiCalls).forEach(({ eventType, payload }) => {
-        this._submitSegmentAPICall(eventType, payload);
+        try {
+          this._submitSegmentAPICall(eventType, payload);
+        } catch (error) {
+          this._captureException(error);
+        }
       });
     }
 
@@ -324,7 +333,7 @@ export default class MetaMetricsController {
    * Updates an event fragment in state
    *
    * @param {string} id - The fragment id to update
-   * @param {MetaMetricsEventFragment} payload - Fragment settings and
+   * @param {Partial<MetaMetricsEventFragment>} payload - Fragment settings and
    *  properties to initiate the fragment with.
    */
   updateEventFragment(id, payload) {
@@ -348,18 +357,22 @@ export default class MetaMetricsController {
   }
 
   /**
+   * @typedef {object} MetaMetricsFinalizeEventFragmentOptions
+   * @property {boolean} [abandoned = false] - if true track the failure
+   * event instead of the success event
+   * @property {MetaMetricsContext.page} [page] - page the final event
+   * occurred on. This will override whatever is set on the fragment
+   * @property {MetaMetricsContext.referrer} [referrer] - Dapp that
+   * originated the fragment. This is for fallback only, the fragment referrer
+   * property will take precedence.
+   */
+
+  /**
    * Finalizes a fragment, tracking either a success event or failure Event
    * and then removes the fragment from state.
    *
    * @param {string} id - UUID of the event fragment to be closed
-   * @param {object} options
-   * @param {boolean} [options.abandoned] - if true track the failure
-   *  event instead of the success event
-   * @param {MetaMetricsContext.page} [options.page] - page the final event
-   *  occurred on. This will override whatever is set on the fragment
-   * @param {MetaMetricsContext.referrer} [options.referrer] - Dapp that
-   *  originated the fragment. This is for fallback only, the fragment referrer
-   *  property will take precedence.
+   * @param {MetaMetricsFinalizeEventFragmentOptions} options
    */
   finalizeEventFragment(id, { abandoned = false, page, referrer } = {}) {
     const fragment = this.store.getState().fragments[id];
@@ -448,19 +461,20 @@ export default class MetaMetricsController {
    *  if not set
    */
   async setParticipateInMetaMetrics(participateInMetaMetrics) {
-    let { metaMetricsId } = this.state;
-    if (participateInMetaMetrics && !metaMetricsId) {
-      // We also need to start sentry automatic session tracking at this point
-      await globalThis.sentry?.startSession();
-      metaMetricsId = this.generateMetaMetricsId();
-    } else if (participateInMetaMetrics === false) {
-      // We also need to stop sentry automatic session tracking at this point
-      await globalThis.sentry?.endSession();
-    }
+    const { metaMetricsId: existingMetaMetricsId } = this.state;
+
+    const metaMetricsId =
+      participateInMetaMetrics && !existingMetaMetricsId
+        ? this.generateMetaMetricsId()
+        : existingMetaMetricsId;
+
     this.store.updateState({ participateInMetaMetrics, metaMetricsId });
+
     if (participateInMetaMetrics) {
       this.trackEventsAfterMetricsOptIn();
       this.clearEventsAfterMetricsOptIn();
+    } else if (this.state.marketingCampaignCookieId) {
+      this.setMarketingCampaignCookieId(null);
     }
 
     ///: BEGIN:ONLY_INCLUDE_IF(build-main,build-beta,build-flask)
@@ -468,6 +482,22 @@ export default class MetaMetricsController {
     ///: END:ONLY_INCLUDE_IF
 
     return metaMetricsId;
+  }
+
+  setDataCollectionForMarketing(dataCollectionForMarketing) {
+    const { metaMetricsId } = this.state;
+
+    this.store.updateState({ dataCollectionForMarketing });
+
+    if (!dataCollectionForMarketing && this.state.marketingCampaignCookieId) {
+      this.setMarketingCampaignCookieId(null);
+    }
+
+    return metaMetricsId;
+  }
+
+  setMarketingCampaignCookieId(marketingCampaignCookieId) {
+    this.store.updateState({ marketingCampaignCookieId });
   }
 
   get state() {
@@ -651,6 +681,16 @@ export default class MetaMetricsController {
     });
   }
 
+  // Retrieve (or generate if doesn't exist) the client metametrics id
+  getMetaMetricsId() {
+    let { metaMetricsId } = this.state;
+    if (!metaMetricsId) {
+      metaMetricsId = this.generateMetaMetricsId();
+      this.store.updateState({ metaMetricsId });
+    }
+    return metaMetricsId;
+  }
+
   /** PRIVATE METHODS */
 
   /**
@@ -683,6 +723,7 @@ export default class MetaMetricsController {
       userAgent: window.navigator.userAgent,
       page,
       referrer,
+      marketingCampaignCookieId: this.state.marketingCampaignCookieId,
     };
   }
 
@@ -763,13 +804,7 @@ export default class MetaMetricsController {
         : null;
     ///: END:ONLY_INCLUDE_IF
     const { traits, previousUserTraits } = this.store.getState();
-    let securityProvider;
-    if (metamaskState.securityAlertsEnabled) {
-      securityProvider = 'blockaid';
-    }
-    if (metamaskState.transactionSecurityCheckEnabled) {
-      securityProvider = 'opensea';
-    }
+
     /** @type {MetaMetricsTraits} */
     const currentTraits = {
       [MetaMetricsUserTrait.AddressBookEntries]: sum(
@@ -780,17 +815,17 @@ export default class MetaMetricsController {
       [MetaMetricsUserTrait.LedgerConnectionType]:
         metamaskState.ledgerTransportType,
       [MetaMetricsUserTrait.NetworksAdded]: Object.values(
-        metamaskState.networkConfigurations,
+        metamaskState.networkConfigurationsByChainId,
       ).map((networkConfiguration) => networkConfiguration.chainId),
       [MetaMetricsUserTrait.NetworksWithoutTicker]: Object.values(
-        metamaskState.networkConfigurations,
+        metamaskState.networkConfigurationsByChainId,
       )
-        .filter(({ ticker }) => !ticker)
+        .filter(({ nativeCurrency }) => !nativeCurrency)
         .map(({ chainId }) => chainId),
       [MetaMetricsUserTrait.NftAutodetectionEnabled]:
         metamaskState.useNftDetection,
       [MetaMetricsUserTrait.NumberOfAccounts]: Object.values(
-        metamaskState.identities,
+        metamaskState.internalAccounts.accounts,
       ).length,
       [MetaMetricsUserTrait.NumberOfNftCollections]:
         this._getAllUniqueNFTAddressesLength(metamaskState.allNfts),
@@ -804,22 +839,22 @@ export default class MetaMetricsController {
       [MetaMetricsUserTrait.Theme]: metamaskState.theme || 'default',
       [MetaMetricsUserTrait.TokenDetectionEnabled]:
         metamaskState.useTokenDetection,
-      ///: BEGIN:ONLY_INCLUDE_IF(desktop)
-      [MetaMetricsUserTrait.DesktopEnabled]:
-        metamaskState.desktopEnabled || false,
-      ///: END:ONLY_INCLUDE_IF
+      [MetaMetricsUserTrait.UseNativeCurrencyAsPrimaryCurrency]:
+        metamaskState.useNativeCurrencyAsPrimaryCurrency,
+      [MetaMetricsUserTrait.CurrentCurrency]: metamaskState.currentCurrency,
       ///: BEGIN:ONLY_INCLUDE_IF(build-mmi)
       [MetaMetricsUserTrait.MmiExtensionId]: this.extension?.runtime?.id,
       [MetaMetricsUserTrait.MmiAccountAddress]: mmiAccountAddress,
       [MetaMetricsUserTrait.MmiIsCustodian]: Boolean(mmiAccountAddress),
       ///: END:ONLY_INCLUDE_IF
-      [MetaMetricsUserTrait.SecurityProviders]: securityProvider
-        ? [securityProvider]
-        : [],
-      ///: BEGIN:ONLY_INCLUDE_IF(petnames)
+      [MetaMetricsUserTrait.SecurityProviders]:
+        metamaskState.securityAlertsEnabled ? ['blockaid'] : [],
       [MetaMetricsUserTrait.PetnameAddressCount]:
         this._getPetnameAddressCount(metamaskState),
-      ///: END:ONLY_INCLUDE_IF
+      [MetaMetricsUserTrait.IsMetricsOptedIn]:
+        metamaskState.participateInMetaMetrics,
+      [MetaMetricsUserTrait.HasMarketingConsent]:
+        metamaskState.dataCollectionForMarketing,
     };
 
     if (!previousUserTraits) {
@@ -1002,7 +1037,8 @@ export default class MetaMetricsController {
     // to be updated to work with the new tracking plan. I think we should use
     // a config setting for this instead of trying to match the event name
     const isSendFlow = Boolean(payload.event.match(/^send|^confirm/iu));
-    if (isSendFlow) {
+    // do not filter if excludeMetaMetricsId is explicitly set to false
+    if (options?.excludeMetaMetricsId !== false && isSendFlow) {
       excludeMetaMetricsId = true;
     }
     // If we are tracking sensitive data we will always use the anonymousId
@@ -1060,7 +1096,11 @@ export default class MetaMetricsController {
   // Saving segmentApiCalls in controller store in MV3 ensures that events are tracked
   // even if service worker terminates before events are submiteed to segment.
   _submitSegmentAPICall(eventType, payload, callback) {
-    const { metaMetricsId, participateInMetaMetrics } = this.state;
+    const {
+      metaMetricsId,
+      participateInMetaMetrics,
+      latestNonAnonymousEventTimestamp,
+    } = this.state;
     if (!participateInMetaMetrics || !metaMetricsId) {
       return;
     }
@@ -1075,6 +1115,11 @@ export default class MetaMetricsController {
     }
     const modifiedPayload = { ...payload, messageId, timestamp };
     this.store.updateState({
+      ...this.store.getState(),
+      latestNonAnonymousEventTimestamp:
+        modifiedPayload.anonymousId === METAMETRICS_ANONYMOUS_ID
+          ? latestNonAnonymousEventTimestamp
+          : timestamp.valueOf(),
       segmentApiCalls: {
         ...this.store.getState().segmentApiCalls,
         [messageId]: {

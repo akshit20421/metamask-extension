@@ -3,11 +3,11 @@ const {
   defaultGanacheOptions,
   switchToNotificationWindow,
   withFixtures,
-  regularDelayMs,
   openDapp,
   unlockWallet,
   getEventPayloads,
   clickSignOnSignatureConfirmation,
+  tempToggleSettingRedesignedConfirmations,
   validateContractDetails,
 } = require('../../helpers');
 const FixtureBuilder = require('../../fixture-builder');
@@ -65,30 +65,35 @@ describe('Signature Approved Event @no-mmi', function () {
       },
       async ({ driver, mockedEndpoint: mockedEndpoints }) => {
         await unlockWallet(driver);
+        await tempToggleSettingRedesignedConfirmations(driver);
         await openDapp(driver);
 
         // creates a sign typed data signature request
         await driver.clickElement('#signTypedDataV4');
         await switchToNotificationWindow(driver);
         await validateContractDetails(driver);
-        await clickSignOnSignatureConfirmation(driver);
+        await clickSignOnSignatureConfirmation({ driver });
         const events = await getEventPayloads(driver, mockedEndpoints);
+
         assert.deepStrictEqual(events[0].properties, {
           account_type: 'MetaMask',
           signature_type: 'eth_signTypedData_v4',
           category: 'inpage_provider',
           locale: 'en',
           chain_id: '0x539',
+          eip712_primary_type: 'Mail',
           environment_type: 'background',
           security_alert_reason: 'NotApplicable',
           security_alert_response: 'NotApplicable',
         });
+
         assert.deepStrictEqual(events[1].properties, {
           account_type: 'MetaMask',
           signature_type: 'eth_signTypedData_v4',
           category: 'inpage_provider',
           locale: 'en',
           chain_id: '0x539',
+          eip712_primary_type: 'Mail',
           environment_type: 'background',
           security_alert_reason: 'NotApplicable',
           security_alert_response: 'NotApplicable',
@@ -113,13 +118,14 @@ describe('Signature Approved Event @no-mmi', function () {
       },
       async ({ driver, mockedEndpoint: mockedEndpoints }) => {
         await unlockWallet(driver);
+        await tempToggleSettingRedesignedConfirmations(driver);
         await openDapp(driver);
 
         // creates a sign typed data signature request
         await driver.clickElement('#signTypedDataV3');
         await switchToNotificationWindow(driver);
         await validateContractDetails(driver);
-        await clickSignOnSignatureConfirmation(driver);
+        await clickSignOnSignatureConfirmation({ driver });
         const events = await getEventPayloads(driver, mockedEndpoints);
         assert.deepStrictEqual(events[0].properties, {
           account_type: 'MetaMask',
@@ -161,12 +167,13 @@ describe('Signature Approved Event @no-mmi', function () {
       },
       async ({ driver, mockedEndpoint: mockedEndpoints }) => {
         await unlockWallet(driver);
+        await tempToggleSettingRedesignedConfirmations(driver);
         await openDapp(driver);
 
         // creates a sign typed data signature request
         await driver.clickElement('#signTypedData');
         await switchToNotificationWindow(driver);
-        await clickSignOnSignatureConfirmation(driver);
+        await clickSignOnSignatureConfirmation({ driver });
         const events = await getEventPayloads(driver, mockedEndpoints);
         assert.deepStrictEqual(events[0].properties, {
           account_type: 'MetaMask',
@@ -208,12 +215,13 @@ describe('Signature Approved Event @no-mmi', function () {
       },
       async ({ driver, mockedEndpoint: mockedEndpoints }) => {
         await unlockWallet(driver);
+        await tempToggleSettingRedesignedConfirmations(driver);
         await openDapp(driver);
 
         // creates a sign typed data signature request
         await driver.clickElement('#personalSign');
         await switchToNotificationWindow(driver);
-        await clickSignOnSignatureConfirmation(driver);
+        await clickSignOnSignatureConfirmation({ driver });
         const events = await getEventPayloads(driver, mockedEndpoints);
         assert.deepStrictEqual(events[0].properties, {
           account_type: 'MetaMask',
@@ -228,62 +236,6 @@ describe('Signature Approved Event @no-mmi', function () {
         assert.deepStrictEqual(events[1].properties, {
           account_type: 'MetaMask',
           signature_type: 'personal_sign',
-          category: 'inpage_provider',
-          locale: 'en',
-          chain_id: '0x539',
-          environment_type: 'background',
-          security_alert_reason: 'NotApplicable',
-          security_alert_response: 'NotApplicable',
-        });
-      },
-    );
-  });
-  it('Successfully tracked for eth_sign', async function () {
-    await withFixtures(
-      {
-        dapp: true,
-        fixtures: new FixtureBuilder()
-          .withPermissionControllerConnectedToTestDapp()
-          .withPreferencesController({
-            disabledRpcMethodPreferences: {
-              eth_sign: true,
-            },
-          })
-          .withMetaMetricsController({
-            metaMetricsId: 'fake-metrics-id',
-            participateInMetaMetrics: true,
-          })
-          .build(),
-        defaultGanacheOptions,
-        title: this.test.fullTitle(),
-        testSpecificMock: mockSegment,
-      },
-      async ({ driver, mockedEndpoint: mockedEndpoints }) => {
-        await unlockWallet(driver);
-        await openDapp(driver);
-
-        // creates a sign typed data signature request
-        await driver.clickElement('#ethSign');
-        await switchToNotificationWindow(driver);
-        await driver.delay(regularDelayMs);
-        await driver.clickElement('[data-testid="page-container-footer-next"]');
-        await driver.clickElement(
-          '.signature-request-warning__footer__sign-button',
-        );
-        const events = await getEventPayloads(driver, mockedEndpoints);
-        assert.deepStrictEqual(events[0].properties, {
-          account_type: 'MetaMask',
-          signature_type: 'eth_sign',
-          category: 'inpage_provider',
-          locale: 'en',
-          chain_id: '0x539',
-          environment_type: 'background',
-          security_alert_reason: 'NotApplicable',
-          security_alert_response: 'NotApplicable',
-        });
-        assert.deepStrictEqual(events[1].properties, {
-          account_type: 'MetaMask',
-          signature_type: 'eth_sign',
           category: 'inpage_provider',
           locale: 'en',
           chain_id: '0x539',

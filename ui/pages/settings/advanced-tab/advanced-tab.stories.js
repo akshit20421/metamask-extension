@@ -18,6 +18,7 @@ export default {
     },
     setShowTestNetworks: { action: 'setShowTestNetworks' },
     setIpfsGateway: { action: 'setIpfsGateway' },
+    setIsIpfsGatewayEnabled: { action: 'setIsIpfsGatewayEnabled' },
     setDismissSeedBackUpReminder: { action: 'setDismissSeedBackUpReminder' },
     setUseNonceField: { action: 'setUseNonceField' },
     setHexDataFeatureFlag: { action: 'setHexDataFeatureFlag' },
@@ -25,9 +26,6 @@ export default {
     history: { action: 'history' },
     showResetAccountConfirmationModal: {
       action: 'showResetAccountConfirmationModal',
-    },
-    showEthSignModal: {
-      action: 'showEthSignModal',
     },
   },
 };

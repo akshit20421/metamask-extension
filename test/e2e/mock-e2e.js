@@ -1,3 +1,35 @@
+const fs = require('fs');
+
+const {
+  BRIDGE_DEV_API_BASE_URL,
+  BRIDGE_PROD_API_BASE_URL,
+} = require('../../shared/constants/bridge');
+const {
+  GAS_API_BASE_URL,
+  SWAPS_API_V2_BASE_URL,
+  TOKEN_API_BASE_URL,
+} = require('../../shared/constants/swaps');
+const {
+  DEFAULT_FEATURE_FLAGS_RESPONSE: BRIDGE_DEFAULT_FEATURE_FLAGS_RESPONSE,
+} = require('./tests/bridge/constants');
+
+const CDN_CONFIG_PATH = 'test/e2e/mock-cdn/cdn-config.txt';
+const CDN_STALE_DIFF_PATH = 'test/e2e/mock-cdn/cdn-stale-diff.txt';
+const CDN_STALE_PATH = 'test/e2e/mock-cdn/cdn-stale.txt';
+const PPOM_VERSION_PATH = 'test/e2e/mock-cdn/ppom-version.json';
+const PPOM_VERSION_HEADERS_PATH = 'test/e2e/mock-cdn/ppom-version-headers.json';
+
+const CDN_CONFIG_RES_HEADERS_PATH =
+  'test/e2e/mock-cdn/cdn-config-res-headers.json';
+const CDN_STALE_DIFF_RES_HEADERS_PATH =
+  'test/e2e/mock-cdn/cdn-stale-diff-res-headers.json';
+const CDN_STALE_RES_HEADERS_PATH =
+  'test/e2e/mock-cdn/cdn-stale-res-headers.json';
+
+const AGGREGATOR_METADATA_PATH =
+  'test/e2e/mock-response-data/aggregator-metadata.json';
+const TOKEN_BLOCKLIST_PATH = 'test/e2e/mock-response-data/token-blocklist.json';
+
 const blacklistedHosts = [
   'arbitrum-mainnet.infura.io',
   'goerli.infura.io',
@@ -7,6 +39,7 @@ const blacklistedHosts = [
 const {
   mockEmptyStalelistAndHotlist,
 } = require('./tests/phishing-controller/mocks');
+const { mockNotificationServices } = require('./tests/notifications/mocks');
 
 const emptyHtmlPage = () => `<!DOCTYPE html>
 <html lang="en">
@@ -44,12 +77,17 @@ const browserAPIRequestDomains =
  * Setup E2E network mocks.
  *
  * @param {Mockttp} server - The mock server used for network mocks.
- * @param {(server: Mockttp) => MockedEndpoint} testSpecificMock - A function for setting up test-specific network mocks
+ * @param {(server: Mockttp) => Promise<MockedEndpoint[]>} testSpecificMock - A function for setting up test-specific network mocks
  * @param {object} options - Network mock options.
  * @param {string} options.chainId - The chain ID used by the default configured network.
- * @returns {SetupMockReturn}
+ * @param {string} options.ethConversionInUsd - The USD conversion rate for ETH.
+ * @returns {Promise<SetupMockReturn>}
  */
-async function setupMocking(server, testSpecificMock, { chainId }) {
+async function setupMocking(
+  server,
+  testSpecificMock,
+  { chainId, ethConversionInUsd = '1700' },
+) {
   const privacyReport = new Set();
   await server.forAnyRequest().thenPassThrough({
     beforeRequest: (req) => {
@@ -100,6 +138,9 @@ async function setupMocking(server, testSpecificMock, { chainId }) {
     .forPost(
       'https://arbitrum-mainnet.infura.io/v3/00000000000000000000000000000000',
     )
+    .withJsonBodyIncluding({
+      method: 'eth_chainId',
+    })
     .thenCallback(() => {
       return {
         statusCode: 200,
@@ -158,9 +199,7 @@ async function setupMocking(server, testSpecificMock, { chainId }) {
     });
 
   await server
-    .forGet(
-      `https://gas-api.metaswap.codefi.network/networks/${chainId}/gasPrices`,
-    )
+    .forGet(`${GAS_API_BASE_URL}/networks/${chainId}/gasPrices`)
     .thenCallback(() => {
       return {
         statusCode: 200,
@@ -173,7 +212,7 @@ async function setupMocking(server, testSpecificMock, { chainId }) {
     });
 
   await server
-    .forGet('https://swap.metaswap.codefi.network/networks/1/token')
+    .forGet(`${SWAPS_API_V2_BASE_URL}/networks/1/token`)
     .withQuery({ address: '0x72c9Fb7ED19D3ce51cea5C56B3e023cd918baaDf' })
     .thenCallback(() => {
       return {
@@ -190,9 +229,7 @@ async function setupMocking(server, testSpecificMock, { chainId }) {
     });
 
   await server
-    .forGet(
-      `https://gas-api.metaswap.codefi.network/networks/${chainId}/suggestedGasFees`,
-    )
+    .forGet(`${GAS_API_BASE_URL}/networks/${chainId}/suggestedGasFees`)
     .thenCallback(() => {
       return {
         statusCode: 200,
@@ -227,7 +264,7 @@ async function setupMocking(server, testSpecificMock, { chainId }) {
     });
 
   await server
-    .forGet('https://swap.metaswap.codefi.network/featureFlags')
+    .forGet(`${SWAPS_API_V2_BASE_URL}/featureFlags`)
     .thenCallback(() => {
       return {
         statusCode: 200,
@@ -263,8 +300,21 @@ async function setupMocking(server, testSpecificMock, { chainId }) {
       };
     });
 
+  [
+    `${BRIDGE_DEV_API_BASE_URL}/getAllFeatureFlags`,
+    `${BRIDGE_PROD_API_BASE_URL}/getAllFeatureFlags`,
+  ].forEach(
+    async (url) =>
+      await server.forGet(url).thenCallback(() => {
+        return {
+          statusCode: 200,
+          json: BRIDGE_DEFAULT_FEATURE_FLAGS_RESPONSE,
+        };
+      }),
+  );
+
   await server
-    .forGet(`https://token-api.metaswap.codefi.network/tokens/${chainId}`)
+    .forGet(`https://token.api.cx.metamask.io/tokens/${chainId}`)
     .thenCallback(() => {
       return {
         statusCode: 200,
@@ -289,12 +339,65 @@ async function setupMocking(server, testSpecificMock, { chainId }) {
             ],
             occurrences: 9,
           },
+          {
+            address: '0x6b175474e89094c44da98b954eedeac495271d0f',
+            symbol: 'DAI',
+            decimals: 18,
+            name: 'Dai Stablecoin',
+            iconUrl:
+              'https://raw.githubusercontent.com/MetaMask/contract-metadata/master/images/dai.svg',
+            type: 'erc20',
+            aggregators: [
+              'metamask',
+              'aave',
+              'bancor',
+              'cmc',
+              'cryptocom',
+              'coinGecko',
+              'oneInch',
+              'pmm',
+              'sushiswap',
+              'zerion',
+              'lifi',
+              'socket',
+              'squid',
+              'openswap',
+              'sonarwatch',
+              'uniswapLabs',
+              'coinmarketcap',
+            ],
+            occurrences: 17,
+            erc20Permit: true,
+            fees: { '0xb0da5965d43369968574d399dbe6374683773a65': 0 },
+            storage: { balance: 2 },
+          },
         ],
       };
     });
 
+  const TOKEN_BLOCKLIST = fs.readFileSync(TOKEN_BLOCKLIST_PATH);
   await server
-    .forGet('https://swap.metaswap.codefi.network/networks/1/tokens')
+    .forGet(`${TOKEN_API_BASE_URL}/blocklist`)
+    .withQuery({ chainId: '1', region: 'global' })
+    .thenCallback(() => {
+      return {
+        statusCode: 200,
+        json: JSON.parse(TOKEN_BLOCKLIST),
+      };
+    });
+
+  const AGGREGATOR_METADATA = fs.readFileSync(AGGREGATOR_METADATA_PATH);
+  await server
+    .forGet(`${SWAPS_API_V2_BASE_URL}/networks/1/aggregatorMetadata`)
+    .thenCallback(() => {
+      return {
+        statusCode: 200,
+        json: JSON.parse(AGGREGATOR_METADATA),
+      };
+    });
+
+  await server
+    .forGet(`${SWAPS_API_V2_BASE_URL}/networks/1/tokens`)
     .thenCallback(() => {
       return {
         statusCode: 200,
@@ -305,7 +408,7 @@ async function setupMocking(server, testSpecificMock, { chainId }) {
             decimals: 18,
             type: 'native',
             iconUrl:
-              'https://token.metaswap.codefi.network/assets/nativeCurrencyLogos/ethereum.svg',
+              'https://token.api.cx.metamask.io/assets/nativeCurrencyLogos/ethereum.svg',
             coingeckoId: 'ethereum',
             address: '0x0000000000000000000000000000000000000000',
             occurrences: 100,
@@ -378,7 +481,7 @@ async function setupMocking(server, testSpecificMock, { chainId }) {
     });
 
   await server
-    .forGet('https://swap.metaswap.codefi.network/networks/1/topAssets')
+    .forGet(`${SWAPS_API_V2_BASE_URL}/networks/1/topAssets`)
     .thenCallback(() => {
       return {
         statusCode: 200,
@@ -404,7 +507,7 @@ async function setupMocking(server, testSpecificMock, { chainId }) {
     });
 
   await server
-    .forGet(`https://token-api.metaswap.codefi.network/token/${chainId}`)
+    .forGet(`https://token.api.cx.metamask.io/token/${chainId}`)
     .thenCallback(() => {
       return {
         statusCode: 200,
@@ -412,9 +515,9 @@ async function setupMocking(server, testSpecificMock, { chainId }) {
       };
     });
 
-  // It disables loading of token icons, e.g. this URL: https://static.metafi.codefi.network/api/v1/tokenIcons/1337/0x0000000000000000000000000000000000000000.png
+  // It disables loading of token icons, e.g. this URL: https://static.cx.metamask.io/api/v1/tokenIcons/1337/0x0000000000000000000000000000000000000000.png
   const tokenIconRegex = new RegExp(
-    `^https:\\/\\/static\\.metafi\\.codefi\\.network\\/api\\/vi\\/tokenIcons\\/${chainId}\\/.*\\.png`,
+    `^https:\\/\\/static\\.cx\\.metamask\\.io\\/api\\/vi\\/tokenIcons\\/${chainId}\\/.*\\.png`,
     'u',
   );
   await server.forGet(tokenIconRegex).thenCallback(() => {
@@ -430,15 +533,84 @@ async function setupMocking(server, testSpecificMock, { chainId }) {
       return {
         statusCode: 200,
         json: {
-          USD: '1700',
+          USD: ethConversionInUsd,
         },
+      };
+    });
+
+  const PPOM_VERSION = fs.readFileSync(PPOM_VERSION_PATH);
+  const PPOM_VERSION_HEADERS = fs.readFileSync(PPOM_VERSION_HEADERS_PATH);
+  const CDN_CONFIG = fs.readFileSync(CDN_CONFIG_PATH);
+  const CDN_STALE = fs.readFileSync(CDN_STALE_PATH);
+  const CDN_STALE_DIFF = fs.readFileSync(CDN_STALE_DIFF_PATH);
+  const CDN_CONFIG_RES_HEADERS = fs.readFileSync(CDN_CONFIG_RES_HEADERS_PATH);
+  const CDN_STALE_RES_HEADERS = fs.readFileSync(CDN_STALE_RES_HEADERS_PATH);
+  const CDN_STALE_DIFF_RES_HEADERS = fs.readFileSync(
+    CDN_STALE_DIFF_RES_HEADERS_PATH,
+  );
+
+  await server
+    .forHead(
+      'https://static.cx.metamask.io/api/v1/confirmations/ppom/ppom_version.json',
+    )
+    .thenCallback(() => {
+      return {
+        statusCode: 200,
+      };
+    });
+
+  await server
+    .forGet(
+      'https://static.cx.metamask.io/api/v1/confirmations/ppom/ppom_version.json',
+    )
+    .thenCallback(() => {
+      return {
+        statusCode: 200,
+        json: JSON.parse(PPOM_VERSION),
+        headers: JSON.parse(PPOM_VERSION_HEADERS),
+      };
+    });
+
+  await server
+    .forGet(
+      /^https:\/\/static.cx.metamask.io\/api\/v1\/confirmations\/ppom\/config\/0x1\/(.*)/u,
+    )
+    .thenCallback(() => {
+      return {
+        statusCode: 200,
+        rawBody: CDN_CONFIG,
+        headers: JSON.parse(CDN_CONFIG_RES_HEADERS),
+      };
+    });
+
+  await server
+    .forGet(
+      /^https:\/\/static.cx.metamask.io\/api\/v1\/confirmations\/ppom\/stale_diff\/0x1\/(.*)/u,
+    )
+    .thenCallback(() => {
+      return {
+        statusCode: 200,
+        rawBody: CDN_STALE_DIFF,
+        headers: JSON.parse(CDN_STALE_DIFF_RES_HEADERS),
+      };
+    });
+
+  await server
+    .forGet(
+      /^https:\/\/static.cx.metamask.io\/api\/v1\/confirmations\/ppom\/stale\/0x1\/(.*)/u,
+    )
+    .thenCallback(() => {
+      return {
+        statusCode: 200,
+        rawBody: CDN_STALE,
+        headers: JSON.parse(CDN_STALE_RES_HEADERS),
       };
     });
 
   await mockEmptyStalelistAndHotlist(server);
 
   await server
-    .forPost('https://customnetwork.com/api/customRPC')
+    .forPost('https://customnetwork.test/api/customRPC')
     .thenCallback(() => {
       return {
         statusCode: 200,
@@ -453,6 +625,26 @@ async function setupMocking(server, testSpecificMock, { chainId }) {
   await mockLensNameProvider(server);
   await mockTokenNameProvider(server, chainId);
 
+  // IPFS endpoint for NFT metadata
+  await server
+    .forGet(
+      'https://bafybeidxfmwycgzcp4v2togflpqh2gnibuexjy4m4qqwxp7nh3jx5zlh4y.ipfs.dweb.link/1.json',
+    )
+    .thenCallback(() => {
+      return {
+        statusCode: 200,
+      };
+    });
+
+  // Notification APIs
+  await mockNotificationServices(server);
+
+  await server.forGet(/^https:\/\/sourcify.dev\/(.*)/u).thenCallback(() => {
+    return {
+      statusCode: 404,
+    };
+  });
+
   /**
    * Returns an array of alphanumerically sorted hostnames that were requested
    * during the current test suite.
@@ -464,6 +656,15 @@ async function setupMocking(server, testSpecificMock, { chainId }) {
   }
 
   /**
+   * Excludes hosts from the privacyReport if they are refered to by the MetaMask Portfolio
+   * in a different tab. This is because the Portfolio is a separate application
+   *
+   * @param request
+   */
+  const portfolioRequestsMatcher = (request) =>
+    request.headers.referer === 'https://portfolio.metamask.io/';
+
+  /**
    * Listen for requests and add the hostname to the privacy report if it did
    * not previously exist. This is used to track which hosts are requested
    * during the current test suite and used to ask for extra scrutiny when new
@@ -472,7 +673,10 @@ async function setupMocking(server, testSpecificMock, { chainId }) {
    * operation. See the browserAPIRequestDomains regex above.
    */
   server.on('request-initiated', (request) => {
-    if (request.headers.host.match(browserAPIRequestDomains) === null) {
+    if (
+      request.headers.host.match(browserAPIRequestDomains) === null &&
+      !portfolioRequestsMatcher(request)
+    ) {
       privacyReport.add(request.headers.host);
     }
   });
@@ -485,10 +689,12 @@ async function mockLensNameProvider(server) {
     '0xcd2a3d9f938e13cd947ec05abc7fe734df8dd826': 'test.lens',
     '0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb': 'test2.lens',
     '0xcccccccccccccccccccccccccccccccccccccccc': 'test3.lens',
+    '0x0c54fccd2e384b4bb6f2e405bf5cbc15a017aafb': 'test4.lens',
   };
 
-  await server.forPost('https://api.lens.dev').thenCallback((request) => {
-    const address = request.body?.json?.variables?.address;
+  await server.forPost('https://api.lens.dev').thenCallback(async (request) => {
+    const json = await request.body?.getJson();
+    const address = json?.variables?.address;
     const handle = handlesByAddress[address];
 
     return {
@@ -518,7 +724,7 @@ async function mockTokenNameProvider(server) {
     const name = namesByAddress[address];
 
     await server
-      .forGet(/https:\/\/token-api\.metaswap\.codefi\.network\/token\/.*/gu)
+      .forGet(/https:\/\/token\.api\.cx\.metamask\.io\/token\/.*/gu)
       .withQuery({ address })
       .thenCallback(() => {
         return {

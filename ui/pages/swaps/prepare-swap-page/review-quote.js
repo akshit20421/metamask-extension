@@ -13,16 +13,15 @@ import { isEqual } from 'lodash';
 import classnames from 'classnames';
 import { captureException } from '@sentry/browser';
 import PropTypes from 'prop-types';
-
+import ZENDESK_URLS from '../../../helpers/constants/zendesk-url';
 import { I18nContext } from '../../../contexts/i18n';
 import SelectQuotePopover from '../select-quote-popover';
 import { useEthFiatAmount } from '../../../hooks/useEthFiatAmount';
 import { useEqualityCheck } from '../../../hooks/useEqualityCheck';
 import { usePrevious } from '../../../hooks/usePrevious';
-import { useGasFeeInputs } from '../../../hooks/gasFeeInput/useGasFeeInputs';
+import { useGasFeeInputs } from '../../confirmations/hooks/useGasFeeInputs';
 import { MetaMetricsContext } from '../../../contexts/metametrics';
 import {
-  FALLBACK_GAS_MULTIPLIER,
   getQuotes,
   getSelectedQuote,
   getApproveTxParams,
@@ -41,10 +40,8 @@ import {
   getBackgroundSwapRouteState,
   swapsQuoteSelected,
   getReviewSwapClickedTimestamp,
-  getSmartTransactionsOptInStatus,
   signAndSendSwapsSmartTransaction,
   getSwapsNetworkConfig,
-  getSmartTransactionsEnabled,
   getSmartTransactionsError,
   getCurrentSmartTransactionsError,
   getSwapsSTXLoading,
@@ -63,13 +60,17 @@ import {
   getHardwareWalletType,
   checkNetworkAndAccountSupports1559,
   getUSDConversionRate,
-  getIsMultiLayerFeeNetwork,
 } from '../../../selectors';
+import {
+  getSmartTransactionsOptInStatus,
+  getSmartTransactionsEnabled,
+} from '../../../../shared/modules/selectors';
 import { getNativeCurrency, getTokens } from '../../../ducks/metamask/metamask';
 import {
   setCustomApproveTxData,
   showModal,
   setSwapsQuotesPollingLimitEnabled,
+  getLayer1GasFee,
 } from '../../../store/actions';
 import {
   ASSET_ROUTE,
@@ -77,7 +78,6 @@ import {
   AWAITING_SWAP_ROUTE,
   PREPARE_SWAP_ROUTE,
 } from '../../../helpers/constants/routes';
-import { CHAIN_IDS } from '../../../../shared/constants/network';
 import {
   addHexes,
   decGWEIToHexWEI,
@@ -85,7 +85,7 @@ import {
   decWEIToDecETH,
   sumHexes,
 } from '../../../../shared/modules/conversion.utils';
-import { getCustomTxParamsData } from '../../confirm-approve/confirm-approve.util';
+import { getCustomTxParamsData } from '../../confirmations/confirm-approve/confirm-approve.util';
 import {
   quotesToRenderableData,
   getRenderableNetworkFeesForQuote,
@@ -117,6 +117,7 @@ import {
 import {
   BannerAlert,
   ButtonLink,
+  ButtonLinkSize,
   Text,
 } from '../../../components/component-library';
 import {
@@ -133,18 +134,17 @@ import {
   toPrecisionWithoutTrailingZeros,
 } from '../../../../shared/lib/transactions-controller-utils';
 import { addHexPrefix } from '../../../../app/scripts/lib/util';
-import { calcTokenValue } from '../../../../shared/lib/swaps-utils';
-import fetchEstimatedL1Fee from '../../../helpers/utils/optimism/fetchEstimatedL1Fee';
+import {
+  calcTokenValue,
+  calculateMaxGasLimit,
+} from '../../../../shared/lib/swaps-utils';
 import ExchangeRateDisplay from '../exchange-rate-display';
 import InfoTooltip from '../../../components/ui/info-tooltip';
-import useRamps from '../../../hooks/experiences/useRamps';
+import useRamps from '../../../hooks/ramps/useRamps/useRamps';
 import ViewQuotePriceDifference from './view-quote-price-difference';
 import SlippageNotificationModal from './slippage-notification-modal';
 
 let intervalId;
-
-const GAS_FEES_LEARN_MORE_URL =
-  'https://community.metamask.io/t/what-is-gas-why-do-transactions-take-so-long/3172';
 
 export default function ReviewQuote({ setReceiveToAmount }) {
   const history = useHistory();
@@ -196,7 +196,6 @@ export default function ReviewQuote({ setReceiveToAmount }) {
   const { balance: ethBalance } = useSelector(getSelectedAccount, shallowEqual);
   const conversionRate = useSelector(conversionRateSelector);
   const USDConversionRate = useSelector(getUSDConversionRate);
-  const isMultiLayerFeeNetwork = useSelector(getIsMultiLayerFeeNetwork);
   const currentCurrency = useSelector(getCurrentCurrency);
   const swapsTokens = useSelector(getTokens, isEqual);
   const networkAndAccountSupports1559 = useSelector(
@@ -241,34 +240,6 @@ export default function ReviewQuote({ setReceiveToAmount }) {
     return '';
   });
 
-  /* istanbul ignore next */
-  const getTranslatedNetworkName = () => {
-    switch (chainId) {
-      case CHAIN_IDS.MAINNET:
-        return t('networkNameEthereum');
-      case CHAIN_IDS.BSC:
-        return t('networkNameBSC');
-      case CHAIN_IDS.POLYGON:
-        return t('networkNamePolygon');
-      case CHAIN_IDS.LOCALHOST:
-        return t('networkNameTestnet');
-      case CHAIN_IDS.GOERLI:
-        return t('networkNameGoerli');
-      case CHAIN_IDS.AVALANCHE:
-        return t('networkNameAvalanche');
-      case CHAIN_IDS.OPTIMISM:
-        return t('networkNameOpMainnet');
-      case CHAIN_IDS.ARBITRUM:
-        return t('networkNameArbitrum');
-      case CHAIN_IDS.ZKSYNC_ERA:
-        return t('networkNameZkSyncEra');
-      case CHAIN_IDS.LINEA_MAINNET:
-        return t('networkNameLinea');
-      default:
-        throw new Error('This network is not supported for token swaps');
-    }
-  };
-
   let gasFeeInputs;
   if (networkAndAccountSupports1559) {
     // For Swaps we want to get 'high' estimations by default.
@@ -295,17 +266,12 @@ export default function ReviewQuote({ setReceiveToAmount }) {
     usedQuote?.gasEstimateWithRefund ||
     `0x${decimalToHex(usedQuote?.averageGas || 0)}`;
 
-  const gasLimitForMax = usedQuote?.gasEstimate || `0x0`;
-
-  const usedGasLimitWithMultiplier = new BigNumber(gasLimitForMax, 16)
-    .times(usedQuote?.gasMultiplier || FALLBACK_GAS_MULTIPLIER, 10)
-    .round(0)
-    .toString(16);
-
-  const nonCustomMaxGasLimit = usedQuote?.gasEstimate
-    ? usedGasLimitWithMultiplier
-    : `0x${decimalToHex(usedQuote?.maxGas || 0)}`;
-  const maxGasLimit = customMaxGas || nonCustomMaxGasLimit;
+  const maxGasLimit = calculateMaxGasLimit(
+    usedQuote?.gasEstimate,
+    usedQuote?.gasMultiplier,
+    usedQuote?.maxGas,
+    customMaxGas,
+  );
 
   let maxFeePerGas;
   let maxPriorityFeePerGas;
@@ -316,7 +282,7 @@ export default function ReviewQuote({ setReceiveToAmount }) {
     const {
       maxFeePerGas: suggestedMaxFeePerGas,
       maxPriorityFeePerGas: suggestedMaxPriorityFeePerGas,
-      gasFeeEstimates: { estimatedBaseFee = '0' },
+      gasFeeEstimates: { estimatedBaseFee = '0' } = {},
     } = gasFeeInputs;
     maxFeePerGas = customMaxFeePerGas || decGWEIToHexWEI(suggestedMaxFeePerGas);
     maxPriorityFeePerGas =
@@ -966,36 +932,40 @@ export default function ReviewQuote({ setReceiveToAmount }) {
   }, [dispatch, trackViewQuotePageLoadedEvent, reviewSwapClickedTimestamp]);
 
   useEffect(() => {
-    // if smart transaction error is turned off, reset submit clicked boolean
     if (
-      !currentSmartTransactionsEnabled &&
-      currentSmartTransactionsError &&
-      submitClicked
+      (!currentSmartTransactionsEnabled &&
+        currentSmartTransactionsError &&
+        submitClicked) ||
+      (isSmartTransaction && !swapsSTXLoading && submitClicked)
     ) {
       setSubmitClicked(false);
     }
   }, [
     currentSmartTransactionsEnabled,
     currentSmartTransactionsError,
+    isSmartTransaction,
+    swapsSTXLoading,
     submitClicked,
   ]);
 
   useEffect(() => {
-    if (!isMultiLayerFeeNetwork || !usedQuote?.multiLayerL1TradeFeeTotal) {
+    if (!usedQuote?.multiLayerL1TradeFeeTotal) {
       return;
     }
     const getEstimatedL1Fees = async () => {
       try {
         let l1ApprovalFeeTotal = '0x0';
         if (approveTxParams) {
-          l1ApprovalFeeTotal = await fetchEstimatedL1Fee({
-            txParams: {
-              ...approveTxParams,
-              gasPrice: addHexPrefix(approveTxParams.gasPrice),
-              value: '0x0', // For approval txs we need to use "0x0" here.
-            },
-            chainId,
-          });
+          l1ApprovalFeeTotal = await dispatch(
+            getLayer1GasFee({
+              transactionParams: {
+                ...approveTxParams,
+                gasPrice: addHexPrefix(approveTxParams.gasPrice),
+                value: '0x0', // For approval txs we need to use "0x0" here.
+              },
+              chainId,
+            }),
+          );
           setMultiLayerL1ApprovalFeeTotal(l1ApprovalFeeTotal);
         }
         const l1FeeTotal = sumHexes(
@@ -1010,13 +980,7 @@ export default function ReviewQuote({ setReceiveToAmount }) {
       }
     };
     getEstimatedL1Fees();
-  }, [
-    unsignedTransaction,
-    approveTxParams,
-    isMultiLayerFeeNetwork,
-    chainId,
-    usedQuote,
-  ]);
+  }, [unsignedTransaction, approveTxParams, chainId, usedQuote]);
 
   const destinationValue = calcTokenValue(
     destinationTokenValue,
@@ -1196,33 +1160,26 @@ export default function ReviewQuote({ setReceiveToAmount }) {
               <InfoTooltip
                 position="left"
                 contentText={
-                  <>
-                    <p className="fee-card__info-tooltip-paragraph">
-                      {t('swapGasFeesSummary', [getTranslatedNetworkName()])}
-                    </p>
-                    <p className="fee-card__info-tooltip-paragraph">
-                      {t('swapGasFeesDetails')}
-                    </p>
-                    <p className="fee-card__info-tooltip-paragraph">
-                      <a
-                        className="fee-card__link"
+                  <p className="fee-card__info-tooltip-paragraph">
+                    {t('swapGasFeesExplanation', [
+                      <ButtonLink
+                        key="learn-more-gas-link"
+                        size={ButtonLinkSize.Inherit}
+                        href={ZENDESK_URLS.GAS_FEES}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        externalLink
                         onClick={() => {
-                          /* istanbul ignore next */
                           trackEvent({
                             event: 'Clicked "Gas Fees: Learn More" Link',
                             category: MetaMetricsEventCategory.Swaps,
                           });
-                          global.platform.openTab({
-                            url: GAS_FEES_LEARN_MORE_URL,
-                          });
                         }}
-                        target="_blank"
-                        rel="noopener noreferrer"
                       >
-                        {t('swapGasFeesLearnMore')}
-                      </a>
-                    </p>
-                  </>
+                        {t('swapGasFeesExplanationLinkText')}
+                      </ButtonLink>,
+                    ])}
+                  </p>
                 }
               />
             </Box>

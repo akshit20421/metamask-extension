@@ -6,13 +6,13 @@ import { getPreferences } from '../../../selectors';
 import {
   backupUserData,
   displayWarning,
-  restoreUserData,
   setAutoLockTimeLimit,
-  setDisabledRpcMethodPreference,
   setDismissSeedBackUpReminder,
   setFeatureFlag,
+  setShowExtensionInFullSizeView,
   setShowFiatConversionOnTestnetsPreference,
   setShowTestNetworks,
+  setSmartTransactionsOptInStatus,
   setUseNonceField,
   showModal,
 } from '../../../store/actions';
@@ -25,13 +25,14 @@ export const mapStateToProps = (state) => {
   } = state;
   const {
     featureFlags: { sendHexData } = {},
-    disabledRpcMethodPreferences,
     useNonceField,
     dismissSeedBackUpReminder,
   } = metamask;
   const {
     showFiatInTestnets,
     showTestNetworks,
+    showExtensionInFullSizeView,
+    smartTransactionsOptInStatus,
     autoLockTimeLimit = DEFAULT_AUTO_LOCK_TIME_LIMIT,
   } = getPreferences(state);
 
@@ -40,23 +41,22 @@ export const mapStateToProps = (state) => {
     sendHexData,
     showFiatInTestnets,
     showTestNetworks,
+    showExtensionInFullSizeView,
+    smartTransactionsOptInStatus,
     autoLockTimeLimit,
     useNonceField,
     dismissSeedBackUpReminder,
-    disabledRpcMethodPreferences,
   };
 };
 
 export const mapDispatchToProps = (dispatch) => {
   return {
     backupUserData: () => backupUserData(),
-    restoreUserData: (jsonString) => restoreUserData(jsonString),
     setHexDataFeatureFlag: (shouldShow) =>
       dispatch(setFeatureFlag('sendHexData', shouldShow)),
     displayWarning: (warning) => dispatch(displayWarning(warning)),
     showResetAccountConfirmationModal: () =>
       dispatch(showModal({ name: 'CONFIRM_RESET_ACCOUNT' })),
-    showEthSignModal: () => dispatch(showModal({ name: 'ETH_SIGN' })),
     setUseNonceField: (value) => dispatch(setUseNonceField(value)),
     setShowFiatConversionOnTestnetsPreference: (value) => {
       return dispatch(setShowFiatConversionOnTestnetsPreference(value));
@@ -64,14 +64,17 @@ export const mapDispatchToProps = (dispatch) => {
     setShowTestNetworks: (value) => {
       return dispatch(setShowTestNetworks(value));
     },
+    setShowExtensionInFullSizeView: (value) => {
+      return dispatch(setShowExtensionInFullSizeView(value));
+    },
+    setSmartTransactionsOptInStatus: (value) => {
+      return dispatch(setSmartTransactionsOptInStatus(value));
+    },
     setAutoLockTimeLimit: (value) => {
       return dispatch(setAutoLockTimeLimit(value));
     },
     setDismissSeedBackUpReminder: (value) => {
       return dispatch(setDismissSeedBackUpReminder(value));
-    },
-    setDisabledRpcMethodPreference: (methodName, isEnabled) => {
-      return dispatch(setDisabledRpcMethodPreference(methodName, isEnabled));
     },
   };
 };

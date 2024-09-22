@@ -296,6 +296,27 @@ describe('AppStateController', () => {
     });
   });
 
+  describe('setLastInteractedConfirmationInfo', () => {
+    it('sets information about last confirmation user has interacted with', () => {
+      const lastInteractedConfirmationInfo = {
+        id: '123',
+        chainId: '0x1',
+        timestamp: new Date().getTime(),
+      };
+      appStateController.setLastInteractedConfirmationInfo(
+        lastInteractedConfirmationInfo,
+      );
+      expect(appStateController.getLastInteractedConfirmationInfo()).toBe(
+        lastInteractedConfirmationInfo,
+      );
+
+      appStateController.setLastInteractedConfirmationInfo(undefined);
+      expect(appStateController.getLastInteractedConfirmationInfo()).toBe(
+        undefined,
+      );
+    });
+  });
+
   describe('setSnapsInstallPrivacyWarningShownStatus', () => {
     it('updates the status of snaps install privacy warning', () => {
       appStateController = createAppStateController();
@@ -309,6 +330,46 @@ describe('AppStateController', () => {
       expect(updateStateSpy).toHaveBeenCalledTimes(1);
       expect(updateStateSpy).toHaveBeenCalledWith({
         snapsInstallPrivacyWarningShown: true,
+      });
+
+      updateStateSpy.mockRestore();
+    });
+  });
+
+  describe('institutional', () => {
+    it('set the interactive replacement token with a url and the old refresh token', () => {
+      appStateController = createAppStateController();
+      const updateStateSpy = jest.spyOn(
+        appStateController.store,
+        'updateState',
+      );
+
+      const mockParams = { url: 'https://example.com', oldRefreshToken: 'old' };
+
+      appStateController.showInteractiveReplacementTokenBanner(mockParams);
+
+      expect(updateStateSpy).toHaveBeenCalledTimes(1);
+      expect(updateStateSpy).toHaveBeenCalledWith({
+        interactiveReplacementToken: mockParams,
+      });
+
+      updateStateSpy.mockRestore();
+    });
+
+    it('set the setCustodianDeepLink with the fromAddress and custodyId', () => {
+      appStateController = createAppStateController();
+      const updateStateSpy = jest.spyOn(
+        appStateController.store,
+        'updateState',
+      );
+
+      const mockParams = { fromAddress: '0x', custodyId: 'custodyId' };
+
+      appStateController.setCustodianDeepLink(mockParams);
+
+      expect(updateStateSpy).toHaveBeenCalledTimes(1);
+      expect(updateStateSpy).toHaveBeenCalledWith({
+        custodianDeepLink: mockParams,
       });
 
       updateStateSpy.mockRestore();

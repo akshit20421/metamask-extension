@@ -78,25 +78,18 @@ export default class AccountTracker {
     this.onboardingController = opts.onboardingController;
     this.controllerMessenger = opts.controllerMessenger;
 
-    // blockTracker.currentBlock may be null
-    this.#currentBlockNumberByChainId = {
-      [this.getCurrentChainId()]: this.#blockTracker.getCurrentBlock(),
-    };
-    this.#blockTracker.once('latest', (blockNumber) => {
-      this.#currentBlockNumberByChainId[this.getCurrentChainId()] = blockNumber;
-    });
-
     // subscribe to account removal
     opts.onAccountRemoved((address) => this.removeAccounts([address]));
 
-    this.onboardingController.store.subscribe(
-      previousValueComparator(async (prevState, currState) => {
+    this.controllerMessenger.subscribe(
+      'OnboardingController:stateChange',
+      previousValueComparator((prevState, currState) => {
         const { completedOnboarding: prevCompletedOnboarding } = prevState;
         const { completedOnboarding: currCompletedOnboarding } = currState;
         if (!prevCompletedOnboarding && currCompletedOnboarding) {
           this.updateAccountsAllActiveNetworks();
         }
-      }, this.onboardingController.store.getState()),
+      }, this.onboardingController.state),
     );
 
     this.selectedAccount = this.controllerMessenger.call(
@@ -104,7 +97,7 @@ export default class AccountTracker {
     );
 
     this.controllerMessenger.subscribe(
-      'AccountsController:selectedAccountChange',
+      'AccountsController:selectedEvmAccountChange',
       (newAccount) => {
         const { useMultiAccountBalanceChecker } =
           this.preferencesController.store.getState();
@@ -124,6 +117,14 @@ export default class AccountTracker {
    * Starts polling with global selected network
    */
   start() {
+    // blockTracker.currentBlock may be null
+    this.#currentBlockNumberByChainId = {
+      [this.getCurrentChainId()]: this.#blockTracker.getCurrentBlock(),
+    };
+    this.#blockTracker.once('latest', (blockNumber) => {
+      this.#currentBlockNumberByChainId[this.getCurrentChainId()] = blockNumber;
+    });
+
     // remove first to avoid double add
     this.#blockTracker.removeListener('latest', this.#updateForBlock);
     // add listener
@@ -460,7 +461,7 @@ export default class AccountTracker {
    * @returns {Promise} after all account balances updated
    */
   async updateAccounts(networkClientId) {
-    const { completedOnboarding } = this.onboardingController.store.getState();
+    const { completedOnboarding } = this.onboardingController.state;
     if (!completedOnboarding) {
       return;
     }

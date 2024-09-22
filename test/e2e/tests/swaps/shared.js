@@ -18,12 +18,7 @@ const withFixturesOptions = {
 };
 
 const buildQuote = async (driver, options) => {
-  if (process.env.MULTICHAIN) {
-    await driver.clickElement('[data-testid="app-footer-actions-button"]');
-    await driver.clickElement('[data-testid="select-action-modal-item-swap"]');
-  } else {
-    await driver.clickElement('[data-testid="token-overview-button-swap"]');
-  }
+  await driver.clickElement('[data-testid="token-overview-button-swap"]');
   await driver.fill(
     'input[data-testid="prepare-swap-page-from-token-amount"]',
     options.amount,
@@ -116,11 +111,11 @@ const waitForTransactionToComplete = async (driver, options) => {
   });
 
   await driver.clickElement({ text: 'Close', tag: 'button' });
-  await driver.waitForSelector('[data-testid="home__asset-tab"]');
+  await driver.waitForSelector('[data-testid="account-overview__asset-tab"]');
 };
 
 const checkActivityTransaction = async (driver, options) => {
-  await driver.clickElement('[data-testid="home__activity-tab"]');
+  await driver.clickElement('[data-testid="account-overview__activity-tab"]');
   await driver.waitForSelector('.activity-list-item');
 
   const transactionList = await driver.findElements(

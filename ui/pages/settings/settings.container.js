@@ -18,6 +18,7 @@ import {
   CONTACT_ADD_ROUTE,
   CONTACT_EDIT_ROUTE,
   CONTACT_VIEW_ROUTE,
+  DEVELOPER_OPTIONS_ROUTE,
   GENERAL_ROUTE,
   NETWORKS_FORM_ROUTE,
   NETWORKS_ROUTE,
@@ -27,6 +28,8 @@ import {
   ADD_NETWORK_ROUTE,
   ADD_POPULAR_CUSTOM_NETWORK,
 } from '../../helpers/constants/routes';
+import { getProviderConfig } from '../../ducks/metamask/metamask';
+import { toggleNetworkMenu } from '../../store/actions';
 import Settings from './settings.component';
 
 const ROUTES_TO_I18N_KEYS = {
@@ -39,6 +42,7 @@ const ROUTES_TO_I18N_KEYS = {
   [CONTACT_EDIT_ROUTE]: 'editContact',
   [CONTACT_LIST_ROUTE]: 'contacts',
   [CONTACT_VIEW_ROUTE]: 'viewContact',
+  [DEVELOPER_OPTIONS_ROUTE]: 'developerOptions',
   [EXPERIMENTAL_ROUTE]: 'experimental',
   [GENERAL_ROUTE]: 'general',
   [NETWORKS_FORM_ROUTE]: 'networks',
@@ -49,12 +53,11 @@ const ROUTES_TO_I18N_KEYS = {
 const mapStateToProps = (state, ownProps) => {
   const { location } = ownProps;
   const { pathname } = location;
+  const { ticker } = getProviderConfig(state);
   const {
-    metamask: {
-      providerConfig: { ticker },
-      currencyRates,
-    },
+    metamask: { currencyRates },
   } = state;
+
   const conversionDate = currencyRates[ticker]?.conversionDate;
 
   const pathNameTail = pathname.match(/[^/]+$/u)[0];
@@ -109,4 +112,13 @@ const mapStateToProps = (state, ownProps) => {
   };
 };
 
-export default compose(withRouter, connect(mapStateToProps))(Settings);
+function mapDispatchToProps(dispatch) {
+  return {
+    toggleNetworkMenu: (payload) => dispatch(toggleNetworkMenu(payload)),
+  };
+}
+
+export default compose(
+  withRouter,
+  connect(mapStateToProps, mapDispatchToProps),
+)(Settings);

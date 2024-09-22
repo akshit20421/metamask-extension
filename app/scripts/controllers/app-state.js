@@ -15,6 +15,8 @@ import {
 } from '../../../shared/constants/app';
 import { DEFAULT_AUTO_LOCK_TIME_LIMIT } from '../../../shared/constants/preferences';
 
+/** @typedef {import('../../../shared/types/confirm').LastInteractedConfirmationInfo} LastInteractedConfirmationInfo */
+
 export default class AppStateController extends EventEmitter {
   /**
    * @param {object} opts
@@ -43,13 +45,18 @@ export default class AppStateController extends EventEmitter {
       fullScreenGasPollTokens: [],
       recoveryPhraseReminderHasBeenShown: false,
       recoveryPhraseReminderLastShown: new Date().getTime(),
-      outdatedBrowserWarningLastShown: new Date().getTime(),
+      outdatedBrowserWarningLastShown: null,
       nftsDetectionNoticeDismissed: false,
       showTestnetMessageInDropdown: true,
       showBetaHeader: isBeta(),
-      showProductTour: true,
+      showPermissionsTour: true,
+      showNetworkBanner: true,
+      showAccountBanner: true,
       trezorModel: null,
       currentPopupId: undefined,
+      onboardingDate: null,
+      newPrivacyPolicyToastClickedOrClosed: null,
+      newPrivacyPolicyToastShownDate: null,
       // This key is only used for checking if the user had set advancedGasFee
       // prior to Migration 92.3 where we split out the setting to support
       // multiple networks.
@@ -63,6 +70,12 @@ export default class AppStateController extends EventEmitter {
         '0x539': true,
       },
       surveyLinkLastClickedOrClosed: null,
+      signatureSecurityAlertResponses: {},
+      // States used for displaying the changed network toast
+      switchedNetworkDetails: null,
+      switchedNetworkNeverShowMessage: false,
+      currentExtensionPopupId: 0,
+      lastInteractedConfirmationInfo: undefined,
     });
     this.timer = null;
 
@@ -177,6 +190,24 @@ export default class AppStateController extends EventEmitter {
     });
   }
 
+  setOnboardingDate() {
+    this.store.updateState({
+      onboardingDate: Date.now(),
+    });
+  }
+
+  setNewPrivacyPolicyToastClickedOrClosed() {
+    this.store.updateState({
+      newPrivacyPolicyToastClickedOrClosed: true,
+    });
+  }
+
+  setNewPrivacyPolicyToastShownDate(time) {
+    this.store.updateState({
+      newPrivacyPolicyToastShownDate: time,
+    });
+  }
+
   /**
    * Record the timestamp of the last time the user has seen the recovery phrase reminder
    *
@@ -199,7 +230,6 @@ export default class AppStateController extends EventEmitter {
     });
   }
 
-  ///: BEGIN:ONLY_INCLUDE_IF(snaps)
   /**
    * Record if popover for snaps privacy warning has been shown
    * on the first install of a snap.
@@ -211,7 +241,6 @@ export default class AppStateController extends EventEmitter {
       snapsInstallPrivacyWarningShown: shown,
     });
   }
-  ///: END:ONLY_INCLUDE_IF
 
   /**
    * Record the timestamp of the last time the user has seen the outdated browser warning
@@ -267,10 +296,19 @@ export default class AppStateController extends EventEmitter {
       return;
     }
 
+    // This is a temporary fix until we add a state migration.
+    // Due to a bug in ui/pages/settings/advanced-tab/advanced-tab.component.js,
+    // it was possible for timeoutMinutes to be saved as a string, as explained
+    // in PR 25109. `alarms.create` will fail in that case. We are
+    // converting this to a number here to prevent that failure. Once
+    // we add a migration to update the malformed state to the right type,
+    // we will remove this conversion.
+    const timeoutToSet = Number(timeoutMinutes);
+
     if (isManifestV3) {
       this.extension.alarms.create(AUTO_LOCK_TIMEOUT_ALARM, {
-        delayInMinutes: timeoutMinutes,
-        periodInMinutes: timeoutMinutes,
+        delayInMinutes: timeoutToSet,
+        periodInMinutes: timeoutToSet,
       });
       this.extension.alarms.onAlarm.addListener((alarmInfo) => {
         if (alarmInfo.name === AUTO_LOCK_TIMEOUT_ALARM) {
@@ -281,7 +319,7 @@ export default class AppStateController extends EventEmitter {
     } else {
       this.timer = setTimeout(
         () => this.onInactiveTimeout(),
-        timeoutMinutes * MINUTE,
+        timeoutToSet * MINUTE,
       );
     }
   }
@@ -362,12 +400,69 @@ export default class AppStateController extends EventEmitter {
   }
 
   /**
-   * Sets whether the product tour should be shown
+   * Sets whether the permissions tour should be shown to the user
    *
-   * @param showProductTour
+   * @param showPermissionsTour
    */
-  setShowProductTour(showProductTour) {
-    this.store.updateState({ showProductTour });
+  setShowPermissionsTour(showPermissionsTour) {
+    this.store.updateState({ showPermissionsTour });
+  }
+
+  /**
+   * Sets whether the Network Banner should be shown
+   *
+   * @param showNetworkBanner
+   */
+  setShowNetworkBanner(showNetworkBanner) {
+    this.store.updateState({ showNetworkBanner });
+  }
+
+  /**
+   * Sets whether the Account Banner should be shown
+   *
+   * @param showAccountBanner
+   */
+  setShowAccountBanner(showAccountBanner) {
+    this.store.updateState({ showAccountBanner });
+  }
+
+  /**
+   * Sets a unique ID for the current extension popup
+   *
+   * @param currentExtensionPopupId
+   */
+  setCurrentExtensionPopupId(currentExtensionPopupId) {
+    this.store.updateState({ currentExtensionPopupId });
+  }
+
+  /**
+   * Sets an object with networkName and appName
+   * or `null` if the message is meant to be cleared
+   *
+   * @param {{ origin: string, networkClientId: string } | null} switchedNetworkDetails - Details about the network that MetaMask just switched to.
+   */
+  setSwitchedNetworkDetails(switchedNetworkDetails) {
+    this.store.updateState({ switchedNetworkDetails });
+  }
+
+  /**
+   * Clears the switched network details in state
+   */
+  clearSwitchedNetworkDetails() {
+    this.store.updateState({ switchedNetworkDetails: null });
+  }
+
+  /**
+   * Remembers if the user prefers to never see the
+   * network switched message again
+   *
+   * @param {boolean} switchedNetworkNeverShowMessage
+   */
+  setSwitchedNetworkNeverShowMessage(switchedNetworkNeverShowMessage) {
+    this.store.updateState({
+      switchedNetworkDetails: null,
+      switchedNetworkNeverShowMessage,
+    });
   }
 
   /**
@@ -422,7 +517,39 @@ export default class AppStateController extends EventEmitter {
     });
   }
 
+  /**
+   * Set the setCustodianDeepLink with the fromAddress and custodyId
+   *
+   * @param {object} opts
+   * @param opts.fromAddress
+   * @param opts.custodyId
+   * @returns {void}
+   */
+  setCustodianDeepLink({ fromAddress, custodyId }) {
+    this.store.updateState({
+      custodianDeepLink: { fromAddress, custodyId },
+    });
+  }
+
   ///: END:ONLY_INCLUDE_IF
+
+  getSignatureSecurityAlertResponse(securityAlertId) {
+    return this.store.getState().signatureSecurityAlertResponses[
+      securityAlertId
+    ];
+  }
+
+  addSignatureSecurityAlertResponse(securityAlertResponse) {
+    const currentState = this.store.getState();
+    const { signatureSecurityAlertResponses } = currentState;
+    this.store.updateState({
+      signatureSecurityAlertResponses: {
+        ...signatureSecurityAlertResponses,
+        [securityAlertResponse.securityAlertId]: securityAlertResponse,
+      },
+    });
+  }
+
   /**
    * A setter for the currentPopupId which indicates the id of popup window that's currently active
    *
@@ -431,6 +558,26 @@ export default class AppStateController extends EventEmitter {
   setCurrentPopupId(currentPopupId) {
     this.store.updateState({
       currentPopupId,
+    });
+  }
+
+  /**
+   * The function returns information about the last confirmation user interacted with
+   *
+   * @type {LastInteractedConfirmationInfo}: Information about the last confirmation user interacted with.
+   */
+  getLastInteractedConfirmationInfo() {
+    return this.store.getState().lastInteractedConfirmationInfo;
+  }
+
+  /**
+   * Update the information about the last confirmation user interacted with
+   *
+   * @type {LastInteractedConfirmationInfo} - information about transaction user last interacted with.
+   */
+  setLastInteractedConfirmationInfo(lastInteractedConfirmationInfo) {
+    this.store.updateState({
+      lastInteractedConfirmationInfo,
     });
   }
 

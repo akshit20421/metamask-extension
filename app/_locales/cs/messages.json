@@ -39,9 +39,6 @@
   "approved": {
     "message": "Schváleno"
   },
-  "attemptingConnect": {
-    "message": "Pokouším se připojit k blockchainu."
-  },
   "attributions": {
     "message": "Zásluhy"
   },
@@ -160,9 +157,6 @@
   "invalidAddressRecipient": {
     "message": "Adresa příjemce je neplatná"
   },
-  "invalidBlockExplorerURL": {
-    "message": "Neplatné Block Explorer URI"
-  },
   "invalidRPC": {
     "message": "Neplatné RPC URI"
   },
@@ -222,9 +216,6 @@
   },
   "next": {
     "message": "Další"
-  },
-  "noAddressForName": {
-    "message": "Pro toto jméno nebyla nastavena žádná adresa."
   },
   "noTransactions": {
     "message": "Žádné transakce"
@@ -288,9 +279,6 @@
   },
   "send": {
     "message": "Odeslat"
-  },
-  "sendTokens": {
-    "message": "Odeslat tokeny"
   },
   "settings": {
     "message": "Nastavení"

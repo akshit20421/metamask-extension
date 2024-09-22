@@ -45,9 +45,6 @@
   "approved": {
     "message": "அங்கீகரிக்கப்பட்ட"
   },
-  "attemptingConnect": {
-    "message": "இணைக்க முயற்சி செய்க ப்ளாக்சைன்"
-  },
   "attributions": {
     "message": "பண்புகளும்"
   },
@@ -194,9 +191,6 @@
   "invalidAddressRecipient": {
     "message": "பெறுநர் முகவரி தவறானது"
   },
-  "invalidBlockExplorerURL": {
-    "message": "தவறான Block Explorer URI"
-  },
   "invalidRPC": {
     "message": "தவறான RPC URI"
   },
@@ -265,9 +259,6 @@
   },
   "next": {
     "message": "அடுத்தது"
-  },
-  "noAddressForName": {
-    "message": "இந்த பெயருக்கான முகவரி அமைக்கப்படவில்லை."
   },
   "noTransactions": {
     "message": "பரிவர்த்தனைகள் இல்லை"
@@ -358,9 +349,6 @@
   },
   "send": {
     "message": "அனுப்பு"
-  },
-  "sendTokens": {
-    "message": "டோக்கன்களை அனுப்பவும்"
   },
   "settings": {
     "message": "அமைப்புகள்"

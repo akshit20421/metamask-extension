@@ -66,7 +66,7 @@ export const ImportTokensModalConfirm = () => {
                     marginRight={4}
                     marginTop={1}
                   >
-                    <AvatarToken name={symbol} src={tokenImage} showHalo />
+                    <AvatarToken name={symbol} src={tokenImage} />
                   </BadgeWrapper>
                   <Box>
                     <Text
@@ -79,7 +79,7 @@ export const ImportTokensModalConfirm = () => {
                       variant={TextVariant.bodySm}
                       color={TextColor.textAlternative}
                     >
-                      {symbol}
+                      <TokenBalance token={token} />
                     </Text>
                   </Box>
                 </Box>
@@ -94,6 +94,7 @@ export const ImportTokensModalConfirm = () => {
                       variant: TextVariant.bodyLgMedium,
                     }}
                     token={token}
+                    showFiat
                   />
                 </Box>
               </Box>

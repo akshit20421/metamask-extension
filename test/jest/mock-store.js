@@ -1,10 +1,10 @@
-import { NetworkType } from '@metamask/controller-utils';
-import { NetworkStatus } from '@metamask/network-controller';
-import { EthAccountType, EthMethod } from '@metamask/keyring-api';
-import { CHAIN_IDS } from '../../shared/constants/network';
+import { EthAccountType } from '@metamask/keyring-api';
+import { CHAIN_IDS, CURRENCY_SYMBOLS } from '../../shared/constants/network';
 import { KeyringType } from '../../shared/constants/keyring';
+import { ETH_EOA_METHODS } from '../../shared/constants/eth-methods';
+import { mockNetworkState } from '../stub/networks';
 
-const createGetSmartTransactionFeesApiResponse = () => {
+export const createGetSmartTransactionFeesApiResponse = () => {
   return {
     tradeTxFees: {
       // Approval tx.
@@ -135,21 +135,10 @@ export const createSwapsMockStore = () => {
       swapsSTXLoading: false,
     },
     metamask: {
-      selectedNetworkClientId: NetworkType.mainnet,
-      networksMetadata: {
-        [NetworkType.mainnet]: {
-          EIPS: {
-            1559: false,
-          },
-          status: NetworkStatus.Available,
-        },
-      },
-      providerConfig: {
-        chainId: CHAIN_IDS.MAINNET,
-        ticker: 'ETH',
-      },
       preferences: {
         showFiatInTestnets: true,
+        smartTransactionsOptInStatus: true,
+        showMultiRpcModal: false,
       },
       transactions: [
         {
@@ -227,9 +216,19 @@ export const createSwapsMockStore = () => {
           conversionRate: 1,
         },
       },
-      contractExchangeRates: {
-        '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48': 2,
-        '0x1111111111111111111111111111111111111111': 0.1,
+      marketData: {
+        '0x1': {
+          '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48': {
+            price: 2,
+            contractPercentChange1d: 0.004,
+            priceChange1d: 0.00004,
+          },
+          '0x1111111111111111111111111111111111111111': {
+            price: 0.1,
+            contractPercentChange1d: 0.01,
+            priceChange1d: 0.001,
+          },
+        },
       },
       identities: {
         '0xfdea65c8e26263f6d9a1b5de9555d2931a33b825': {
@@ -261,7 +260,7 @@ export const createSwapsMockStore = () => {
               },
             },
             options: {},
-            methods: [...Object.values(EthMethod)],
+            methods: ETH_EOA_METHODS,
             type: EthAccountType.Eoa,
           },
           '07c2cfec-36c9-46c4-8115-3836d3ac9047': {
@@ -274,7 +273,7 @@ export const createSwapsMockStore = () => {
               },
             },
             options: {},
-            methods: [...Object.values(EthMethod)],
+            methods: ETH_EOA_METHODS,
             type: EthAccountType.Eoa,
           },
           '15e69915-2a1a-4019-93b3-916e11fd432f': {
@@ -287,7 +286,7 @@ export const createSwapsMockStore = () => {
               },
             },
             options: {},
-            methods: [...Object.values(EthMethod)],
+            methods: ETH_EOA_METHODS,
             type: EthAccountType.Eoa,
           },
           '784225f4-d30b-4e77-a900-c8bbce735b88': {
@@ -300,7 +299,24 @@ export const createSwapsMockStore = () => {
               },
             },
             options: {},
-            methods: [...Object.values(EthMethod)],
+            methods: ETH_EOA_METHODS,
+            type: EthAccountType.Eoa,
+          },
+          '36eb02e0-7925-47f0-859f-076608f09b69': {
+            address: '0x95222290DD7278Aa3Ddd389Cc1E1d165CC4BAfe6',
+            id: '36eb02e0-7925-47f0-859f-076608f09b69',
+            metadata: {
+              name: 'Snap Account 1',
+              keyring: {
+                type: 'Snap Keyring',
+              },
+              snap: {
+                id: 'snap-id',
+                name: 'snap name',
+              },
+            },
+            options: {},
+            methods: ETH_EOA_METHODS,
             type: EthAccountType.Eoa,
           },
         },
@@ -344,7 +360,14 @@ export const createSwapsMockStore = () => {
           accounts: ['0xd85a4b6a394794842887b8284293d69163007bbb'],
         },
       ],
-      networkConfigurations: {},
+      ...mockNetworkState({
+        chainId: CHAIN_IDS.MAINNET,
+        ticker: CURRENCY_SYMBOLS.ETH,
+        rpcUrl: 'https://mainnet.infura.io/v3/',
+        blockExplorerUrl: 'https://etherscan.io',
+        id: 'mainnet',
+      }),
+      selectedNetworkClientId: 'mainnet',
       tokens: [
         {
           erc20: true,
@@ -361,6 +384,15 @@ export const createSwapsMockStore = () => {
       ],
       swapsState: {
         swapsFeatureFlags: {
+          ethereum: {
+            extensionActive: true,
+            mobileActive: false,
+            smartTransactions: {
+              expectedDeadline: 45,
+              maxDeadline: 150,
+              returnTxHashAsap: false,
+            },
+          },
           smartTransactions: {
             mobileActive: true,
             extensionActive: true,
@@ -605,6 +637,7 @@ export const createSwapsMockStore = () => {
           ],
         },
       },
+      balances: {},
     },
     appState: {
       modal: {
@@ -618,6 +651,36 @@ export const createSwapsMockStore = () => {
         },
       },
       gasLoadingAnimationIsShowing: false,
+    },
+  };
+};
+
+export const createBridgeMockStore = (
+  featureFlagOverrides = {},
+  bridgeSliceOverrides = {},
+) => {
+  const swapsStore = createSwapsMockStore();
+  return {
+    ...swapsStore,
+    bridge: {
+      toChain: null,
+      ...bridgeSliceOverrides,
+    },
+    metamask: {
+      ...swapsStore.metamask,
+      bridgeState: {
+        ...(swapsStore.metamask.bridgeState ?? {}),
+        bridgeFeatureFlags: {
+          extensionSupport: false,
+          srcNetworkAllowlist: [],
+          destNetworkAllowlist: [],
+          ...featureFlagOverrides,
+        },
+      },
+      ...mockNetworkState(
+        { chainId: CHAIN_IDS.MAINNET },
+        { chainId: CHAIN_IDS.LINEA_MAINNET },
+      ),
     },
   };
 };

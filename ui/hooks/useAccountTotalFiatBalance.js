@@ -23,7 +23,7 @@ import { isEqualCaseInsensitive } from '../../shared/modules/string-utils';
 import { useTokenTracker } from './useTokenTracker';
 
 export const useAccountTotalFiatBalance = (
-  address,
+  account,
   shouldHideZeroBalanceTokens,
 ) => {
   const currentChainId = useSelector(getCurrentChainId);
@@ -36,7 +36,7 @@ export const useAccountTotalFiatBalance = (
   );
 
   const cachedBalances = useSelector(getMetaMaskCachedBalances);
-  const balance = cachedBalances?.[address] ?? 0;
+  const balance = cachedBalances?.[account?.address] ?? 0;
   const nativeFiat = getValueFromWeiHex({
     value: balance,
     toCurrency: currentCurrency,
@@ -45,7 +45,7 @@ export const useAccountTotalFiatBalance = (
   });
 
   const detectedTokens = useSelector(getAllTokens);
-  const tokens = detectedTokens?.[currentChainId]?.[address] ?? [];
+  const tokens = detectedTokens?.[currentChainId]?.[account?.address] ?? [];
   // This selector returns all the tokens, we need it to get the image of token
   const allTokenList = useSelector(getTokenList);
   const allTokenListValues = Object.values(allTokenList);
@@ -54,7 +54,7 @@ export const useAccountTotalFiatBalance = (
 
   const { loading, tokensWithBalances } = useTokenTracker({
     tokens,
-    address,
+    address: account?.address,
     includeFailedTokens: true,
     hideZeroBalanceTokens: shouldHideZeroBalanceTokens,
   });
@@ -83,10 +83,11 @@ export const useAccountTotalFiatBalance = (
   });
 
   // Create an object with native token info. NOTE: Native token info is fetched from a separate controller
-  const nativeTokenValues = {};
-  nativeTokenValues.iconUrl = primaryTokenImage;
-  nativeTokenValues.symbol = nativeCurrency;
-  nativeTokenValues.fiatBalance = nativeFiat;
+  const nativeTokenValues = {
+    iconUrl: primaryTokenImage,
+    symbol: nativeCurrency,
+    fiatBalance: nativeFiat,
+  };
 
   // To match the list of detected tokens with the entire token list to find the image for tokens
   const findMatchingTokens = (array1, array2) => {

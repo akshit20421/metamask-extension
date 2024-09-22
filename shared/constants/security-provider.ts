@@ -1,3 +1,10 @@
+import { Hex } from '@metamask/utils';
+import {
+  SecurityAlertResponse,
+  TransactionType,
+} from '@metamask/transaction-controller';
+import { CHAIN_IDS } from './network';
+
 export enum SecurityProvider {
   Blockaid = 'blockaid',
 }
@@ -7,7 +14,7 @@ type SecurityProviderConfig = Record<
   {
     /** translation key for security provider name */
     readonly tKeyName: string;
-    /** URL to securty provider website */
+    /** URL to security provider website */
     readonly url: string;
   }
 >;
@@ -47,18 +54,20 @@ export enum BlockaidReason {
   other = 'other',
 
   // MetaMask defined reasons
-  failed = 'Failed',
+  errored = 'Error',
   notApplicable = 'NotApplicable',
+  inProgress = 'validation_in_progress',
 }
 
 export enum BlockaidResultType {
   Malicious = 'Malicious',
   Warning = 'Warning',
   Benign = 'Benign',
+  Errored = 'Error',
 
   // MetaMask defined result types
-  Failed = 'Failed',
   NotApplicable = 'NotApplicable',
+  Loading = 'loading',
 }
 
 /**
@@ -75,5 +84,43 @@ export const SECURITY_PROVIDER_MESSAGE_SEVERITY = {
   NOT_SAFE: 2,
 };
 
-export const FALSE_POSITIVE_REPORT_BASE_URL = 'https://report.blockaid.io/tx';
-export const UTM_SOURCE = 'metamask-ppom';
+export const FALSE_POSITIVE_REPORT_BASE_URL =
+  'https://blockaid-false-positive-portal.metamask.io';
+
+export const SECURITY_PROVIDER_UTM_SOURCE = 'metamask-ppom';
+
+export const SECURITY_PROVIDER_SUPPORTED_CHAIN_IDS: Hex[] = [
+  CHAIN_IDS.ARBITRUM,
+  CHAIN_IDS.AVALANCHE,
+  CHAIN_IDS.BASE,
+  CHAIN_IDS.BSC,
+  CHAIN_IDS.LINEA_MAINNET,
+  CHAIN_IDS.MAINNET,
+  CHAIN_IDS.OPBNB,
+  CHAIN_IDS.OPTIMISM,
+  CHAIN_IDS.POLYGON,
+  CHAIN_IDS.SEPOLIA,
+  CHAIN_IDS.ZKSYNC_ERA,
+  CHAIN_IDS.SCROLL,
+  CHAIN_IDS.BERACHAIN,
+  CHAIN_IDS.METACHAIN_ONE,
+];
+
+export const SECURITY_PROVIDER_EXCLUDED_TRANSACTION_TYPES = [
+  TransactionType.swap,
+  TransactionType.swapApproval,
+  TransactionType.swapAndSend,
+];
+
+export const LOADING_SECURITY_ALERT_RESPONSE: SecurityAlertResponse = {
+  result_type: BlockaidResultType.Loading,
+  reason: BlockaidReason.inProgress,
+};
+
+export enum SecurityAlertSource {
+  /** Validation performed remotely using the Security Alerts API. */
+  API = 'api',
+
+  /** Validation performed locally using the PPOM. */
+  Local = 'local',
+}

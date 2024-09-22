@@ -1,26 +1,44 @@
-import { PPOM } from '@blockaid/ppom_release';
+import { AccountsController } from '@metamask/accounts-controller';
 import { PPOMController } from '@metamask/ppom-validator';
-import { NetworkController } from '@metamask/network-controller';
-
 import {
-  BlockaidReason,
-  BlockaidResultType,
-} from '../../../../shared/constants/security-provider';
-import { CHAIN_IDS } from '../../../../shared/constants/network';
-import PreferencesController from '../../controllers/preferences';
+  NetworkClientId,
+  NetworkController,
+} from '@metamask/network-controller';
+import {
+  Json,
+  JsonRpcParams,
+  JsonRpcRequest,
+  JsonRpcResponse,
+} from '@metamask/utils';
+import { detectSIWE } from '@metamask/controller-utils';
 
-const { sentry } = global as any;
+import { MESSAGE_TYPE } from '../../../../shared/constants/app';
+import { SIGNING_METHODS } from '../../../../shared/constants/transaction';
+import PreferencesController from '../../controllers/preferences-controller';
+import { AppStateController } from '../../controllers/app-state';
+import { LOADING_SECURITY_ALERT_RESPONSE } from '../../../../shared/constants/security-provider';
+import { trace, TraceContext, TraceName } from '../../../../shared/lib/trace';
+import {
+  generateSecurityAlertId,
+  handlePPOMError,
+  isChainSupported,
+  validateRequestWithPPOM,
+} from './ppom-util';
+import { SecurityAlertResponse } from './types';
 
-const ConfirmationMethods = Object.freeze([
+const CONFIRMATION_METHODS = Object.freeze([
   'eth_sendRawTransaction',
   'eth_sendTransaction',
-  'eth_sign',
-  'eth_signTypedData',
-  'eth_signTypedData_v1',
-  'eth_signTypedData_v3',
-  'eth_signTypedData_v4',
-  'personal_sign',
+  ...SIGNING_METHODS,
 ]);
+
+export type PPOMMiddlewareRequest<
+  Params extends JsonRpcParams = JsonRpcParams,
+> = Required<JsonRpcRequest<Params>> & {
+  networkClientId: NetworkClientId;
+  securityAlertResponse?: SecurityAlertResponse | undefined;
+  traceContext?: TraceContext;
+};
 
 /**
  * Middleware function that handles JSON RPC requests.
@@ -34,38 +52,105 @@ const ConfirmationMethods = Object.freeze([
  * @param ppomController - Instance of PPOMController.
  * @param preferencesController - Instance of PreferenceController.
  * @param networkController - Instance of NetworkController.
+ * @param appStateController
+ * @param accountsController - Instance of AccountsController.
+ * @param updateSecurityAlertResponse
  * @returns PPOMMiddleware function.
  */
-export function createPPOMMiddleware(
+export function createPPOMMiddleware<
+  Params extends (string | { to: string })[],
+  Result extends Json,
+>(
   ppomController: PPOMController,
   preferencesController: PreferencesController,
   networkController: NetworkController,
+  appStateController: AppStateController,
+  accountsController: AccountsController,
+  updateSecurityAlertResponse: (
+    method: string,
+    signatureAlertId: string,
+    securityAlertResponse: SecurityAlertResponse,
+  ) => void,
 ) {
-  return async (req: any, _res: any, next: () => void) => {
+  return async (
+    req: PPOMMiddlewareRequest<Params>,
+    _res: JsonRpcResponse<Result>,
+    next: () => void,
+  ) => {
     try {
       const securityAlertsEnabled =
         preferencesController.store.getState()?.securityAlertsEnabled;
-      const { chainId } = networkController.state.providerConfig;
+
+      // This will always exist as the SelectedNetworkMiddleware
+      // adds networkClientId to the request before this middleware runs
+      const { chainId } =
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        networkController.getNetworkConfigurationByNetworkClientId(
+          req.networkClientId,
+        )!;
+      const isSupportedChain = await isChainSupported(chainId);
+
       if (
-        securityAlertsEnabled &&
-        ConfirmationMethods.includes(req.method) &&
-        chainId === CHAIN_IDS.MAINNET
+        !securityAlertsEnabled ||
+        !CONFIRMATION_METHODS.includes(req.method) ||
+        !isSupportedChain
       ) {
-        // eslint-disable-next-line require-atomic-updates
-        req.securityAlertResponse = await ppomController.usePPOM(
-          async (ppom: PPOM) => {
-            return ppom.validateJsonRpc(req);
-          },
+        return;
+      }
+
+      const data = req.params[0];
+      if (typeof data === 'string') {
+        const { isSIWEMessage } = detectSIWE({ data });
+        if (isSIWEMessage) {
+          return;
+        }
+      } else if (req.method === MESSAGE_TYPE.ETH_SEND_TRANSACTION) {
+        const { to: toAddress } = data ?? {};
+        const internalAccounts = accountsController.listAccounts();
+        const isToInternalAccount = internalAccounts.some(
+          ({ address }) => address?.toLowerCase() === toAddress?.toLowerCase(),
+        );
+        if (isToInternalAccount) {
+          return;
+        }
+      }
+
+      const securityAlertId = generateSecurityAlertId();
+
+      trace(
+        { name: TraceName.PPOMValidation, parentContext: req.traceContext },
+        () =>
+          validateRequestWithPPOM({
+            ppomController,
+            request: req,
+            securityAlertId,
+            chainId,
+          }).then((securityAlertResponse) => {
+            updateSecurityAlertResponse(
+              req.method,
+              securityAlertId,
+              securityAlertResponse,
+            );
+          }),
+      );
+
+      const loadingSecurityAlertResponse: SecurityAlertResponse = {
+        ...LOADING_SECURITY_ALERT_RESPONSE,
+        securityAlertId,
+      };
+
+      if (SIGNING_METHODS.includes(req.method)) {
+        appStateController.addSignatureSecurityAlertResponse(
+          loadingSecurityAlertResponse,
         );
       }
-    } catch (error: any) {
-      sentry?.captureException(error);
-      console.error('Error validating JSON RPC using PPOM: ', error);
-      req.securityAlertResponse = {
-        result_type: BlockaidResultType.Failed,
-        reason: BlockaidReason.failed,
-        description: 'Validating the confirmation failed by throwing error.',
-      };
+
+      req.securityAlertResponse = loadingSecurityAlertResponse;
+    } catch (error) {
+      req.securityAlertResponse = handlePPOMError(
+        error,
+        'Error createPPOMMiddleware: ',
+      );
     } finally {
       next();
     }

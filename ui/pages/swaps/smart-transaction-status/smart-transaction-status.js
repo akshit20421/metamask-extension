@@ -10,8 +10,6 @@ import {
   getCurrentSmartTransactions,
   getSelectedQuote,
   getTopQuote,
-  getSmartTransactionsOptInStatus,
-  getSmartTransactionsEnabled,
   getCurrentSmartTransactionsEnabled,
   getSwapsNetworkConfig,
   cancelSwapsSmartTransaction,
@@ -22,6 +20,10 @@ import {
   getCurrentChainId,
   getRpcPrefsForCurrentProvider,
 } from '../../../selectors';
+import {
+  getSmartTransactionsOptInStatus,
+  getSmartTransactionsEnabled,
+} from '../../../../shared/modules/selectors';
 import { SWAPS_CHAINID_DEFAULT_BLOCK_EXPLORER_URL_MAP } from '../../../../shared/constants/swaps';
 import {
   DEFAULT_ROUTE,
@@ -108,7 +110,6 @@ export default function SmartTransactionStatusPage() {
     cancellationFeeWei =
       latestSmartTransaction?.statusMetadata?.cancellationFeeWei;
   }
-
   const [timeLeftForPendingStxInSec, setTimeLeftForPendingStxInSec] = useState(
     swapsNetworkConfig.stxStatusDeadline,
   );
